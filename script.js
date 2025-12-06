@@ -364,7 +364,7 @@ function onTouchStart(e) {
   longPressTimer = setTimeout(() => { 
     if(navigator.vibrate) navigator.vibrate(50); 
     startMultiSelect(cell); 
-  }, 1000); 
+  }, 500); 
 }
 
 function onTouchMove(e) { 
@@ -426,3 +426,4 @@ function processSingleCell(cell) {
   
   queueUpdate(cell, val); 
 }
+
