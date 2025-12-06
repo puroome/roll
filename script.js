@@ -357,21 +357,10 @@ function onMouseEnter(e) { if(isMultiMode) addToSelection(e.currentTarget); }
 function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
 
 // [핵심 2] 터치가 시작되면 시간을 기록합니다.
-// [수정] 첫 터치 시 '보안 잠금'을 풀기 위해 1ms 진동을 먼저 줍니다.
 function onTouchStart(e) { 
-  isTouchInteraction = true; 
+  lastTouchTime = Date.now(); // 시간 기록
   const cell = e.currentTarget;
   dragStartCell = cell; 
-  
-  startTouchX = e.touches[0].clientX;
-  startTouchY = e.touches[0].clientY;
-
-  // [핵심] 1ms는 씹힐 수 있으니 15ms로 "틱" 하고 확실하게 신호를 보냅니다.
-  // 이 진동이 성공해야 0.3초 뒤의 "징-" 진동도 허용됩니다.
-  if (navigator.vibrate) {
-    try { navigator.vibrate(15); } catch(err) { /* 무시 */ }
-  }
-
   longPressTimer = setTimeout(() => { 
     if(navigator.vibrate) navigator.vibrate(50); 
     startMultiSelect(cell); 
@@ -437,7 +426,3 @@ function processSingleCell(cell) {
   
   queueUpdate(cell, val); 
 }
-
-
-
-
