@@ -1,5 +1,5 @@
 // ==========================================================
-// [1] Firebase 라이브러리 가져오기 (CDN)
+// [1] Firebase 라이브러리
 // ==========================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, get, update, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -17,7 +17,6 @@ const firebaseConfig = {
   databaseURL: "https://attendance-2d8c9-default-rtdb.asia-southeast1.firebasedatabase.app/"
 };
 
-// Firebase 초기화
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -40,7 +39,6 @@ let pendingChanges = {};
 // [초기화]
 // ==========================================================
 document.addEventListener('DOMContentLoaded', () => {
-  // 전역 함수 연결
   window.onSaveBtnClick = onSaveBtnClick;
   window.onMonthChange = onMonthChange;
   window.loadStudents = loadStudents;
@@ -49,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
   window.hideConfirmModal = hideConfirmModal;
   window.executeSave = executeSave;
 
-  // 이벤트 리스너
   document.getElementById('monthSelect').addEventListener('change', () => { onMonthChange(); saveState(); });
   document.getElementById('weekSelect').addEventListener('change', () => { loadStudents(); saveState(); });
   document.getElementById('classCombinedSelect').addEventListener('change', () => { loadStudents(); saveState(); });
@@ -83,7 +80,7 @@ async function fetchInitDataFromFirebase() {
     if (snapshot.exists()) {
       initUI(snapshot.val());
     } else {
-      alert("Firebase 데이터 없음 (Code.gs 업로드 필요)");
+      alert("Firebase 데이터 없음");
     }
   } catch (error) {
     console.error(error);
@@ -205,22 +202,21 @@ function initUI(data) {
   }
 }
 
-// [핵심 수정] "월" 글자 빼고 숫자만 표시
+// [핵심 수정] "월" 다시 추가
 function setupYearData(year) {
   const info = globalData[year];
   const mSel = document.getElementById('monthSelect');
   const cSel = document.getElementById('classCombinedSelect'); 
-  mSel.innerHTML = '<option value="">월</option>'; // 기본 placeholder는 "월" 유지 (선택 전)
+  mSel.innerHTML = '<option value="">월</option>';
   cSel.innerHTML = '<option value="">반</option>';
   document.getElementById('weekSelect').innerHTML = '<option value="">주</option>';
   
-  // 숫자만 보여주도록 수정 (m + '월' -> m)
-  info.months.forEach(m => mSel.add(new Option(m, m))); 
-
+  // m + '월' 로 텍스트 변경
+  info.months.forEach(m => mSel.add(new Option(m + '월', m))); 
   info.grades.forEach(g => { info.classes.forEach(c => { cSel.add(new Option(`${g}-${c}`, `${g}-${c}`)); }); });
 }
 
-// [핵심 수정] "주" 글자 빼고 숫자만 표시
+// [핵심 수정] "주" 다시 추가
 function onMonthChange(isRestoring = false) {
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
@@ -230,8 +226,8 @@ function onMonthChange(isRestoring = false) {
   if (!month || !globalData[year]) return;
   const weeks = globalData[year].weeks[month];
   
-  // 숫자만 보여주도록 수정 (w + '주' -> w)
-  if (weeks) { weeks.forEach(w => wSel.add(new Option(w, w))); }
+  // w + '주' 로 텍스트 변경
+  if (weeks) { weeks.forEach(w => wSel.add(new Option(w + '주', w))); }
   
   if (isRestoring) {
      const s = getSavedState();
