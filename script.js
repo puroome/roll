@@ -1,5 +1,3 @@
-// script.js
-
 // ==========================================================
 // [1] Firebase 라이브러리 가져오기 (CDN)
 // ==========================================================
@@ -7,7 +5,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getDatabase, ref, get, update, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 // ==========================================================
-// [2] 선생님의 Firebase 설정 (여기에 정보 입력됨)
+// [2] 선생님의 Firebase 설정
 // ==========================================================
 const firebaseConfig = {
   apiKey: "AIzaSyAB1JoulqyMqo3KxS64igennc_dIPKLz7E",
@@ -42,11 +40,9 @@ let pendingChanges = {};
 // ==========================================================
 // [초기화]
 // ==========================================================
-// type="module"에서는 window.onload 대신 바로 실행하거나 이벤트를 붙입니다.
 document.addEventListener('DOMContentLoaded', () => {
-  // 전역 함수 연결 (module scope라 html에서 안보이는 문제 해결)
+  // 전역 함수 연결
   window.onSaveBtnClick = onSaveBtnClick;
-  window.toggleMobileMode = toggleMobileMode;
   window.onMonthChange = onMonthChange;
   window.loadStudents = loadStudents;
   window.saveState = saveState;
@@ -55,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
   window.executeSave = executeSave;
 
   // 이벤트 리스너 등록
-  document.getElementById('mobileToggleContainer').addEventListener('click', toggleMobileMode);
   document.getElementById('monthSelect').addEventListener('change', () => { onMonthChange(); saveState(); });
   document.getElementById('weekSelect').addEventListener('change', () => { loadStudents(); saveState(); });
   document.getElementById('classCombinedSelect').addEventListener('change', () => { loadStudents(); saveState(); });
@@ -75,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   toggleReasonInput();
-  restoreMobileMode();
+  // 모바일 모드 관련 로직 삭제됨
   
   // [핵심] Firebase에서 초기 데이터 가져오기
   fetchInitDataFromFirebase();
@@ -85,18 +80,15 @@ document.addEventListener('DOMContentLoaded', () => {
 // [통신 함수] Firebase 중심
 // ==========================================================
 
-// 1. 초기 데이터 (메타데이터) 가져오기 -> Firebase
 async function fetchInitDataFromFirebase() {
   document.getElementById('loading').style.display = 'inline';
-  
   const dbRef = ref(db);
   try {
-    // 'metadata' 경로의 데이터를 한 번에 가져옴 (초고속)
     const snapshot = await get(child(dbRef, `metadata`));
     if (snapshot.exists()) {
       initUI(snapshot.val());
     } else {
-      alert("Firebase에 데이터가 없습니다. Code.gs에서 'initialUploadToFirebase'를 실행했나요?");
+      alert("Firebase 데이터 없음 (Code.gs 업로드 필요)");
     }
   } catch (error) {
     console.error(error);
@@ -106,7 +98,6 @@ async function fetchInitDataFromFirebase() {
   }
 }
 
-// 2. 학생 데이터 가져오기 -> Firebase
 async function loadStudents() {
   pendingChanges = {};
   updateSaveButtonUI();
@@ -124,7 +115,6 @@ async function loadStudents() {
 
   document.getElementById('loading').style.display = 'inline';
   
-  // Firebase 경로: attendance/2024/3/1/1-1
   const path = `attendance/${year}/${month}/${week}/${grade}-${cls}`;
   const dbRef = ref(db);
 
@@ -133,7 +123,7 @@ async function loadStudents() {
     if (snapshot.exists()) {
       renderTable(snapshot.val());
     } else {
-      document.getElementById('tableContainer').innerHTML = '<div style="padding:20px; text-align:center;">데이터 없음 (Code.gs 업로드 필요)</div>';
+      document.getElementById('tableContainer').innerHTML = '<div style="padding:20px; text-align:center;">데이터 없음</div>';
     }
   } catch (error) {
     console.error(error);
@@ -142,14 +132,13 @@ async function loadStudents() {
   }
 }
 
-// 3. 저장하기 (Dual Write: Firebase 즉시 반영 + GAS 백업)
 async function executeSave() {
   document.getElementById('confirmModal').classList.remove('show');
   const keys = Object.keys(pendingChanges);
   if (keys.length === 0) return;
 
   const btn = document.getElementById('saveBtn');
-  btn.innerText = "저장 중...";
+  btn.innerText = "...";
   btn.disabled = true;
 
   const year = CURRENT_YEAR;
@@ -160,22 +149,11 @@ async function executeSave() {
   const grade = parts[0];
   const cls = parts[1];
 
-  // 1. Firebase 업데이트를 위한 객체 생성
-  // 구조: attendance/2024/month/week/grade-class/students/index/attendance/index/value
-  // 하지만 Firebase 배열 업데이트는 까다로우므로, 현재 로드된 데이터를 수정해서 통째로 덮어쓰거나
-  // UI상에서 위치를 찾아서 업데이트해야 합니다. 
-  // 여기서는 [가장 안전한 방법]으로, 현재 메모리에 있는 globalData(현재 테이블 데이터)를 수정한 뒤 통째로 업데이트합니다.
-  // (실시간 동시성 충돌을 완벽히 막으려면 복잡해지지만, 이 방식이 구현이 쉽고 빠릅니다.)
-  
-  // 현재 화면의 데이터를 수정
-  const currentTableData = window.currentRenderedData; // renderTable에서 저장해둔 데이터
+  const currentTableData = window.currentRenderedData; 
   
   keys.forEach(key => {
-    const [r, c] = key.split('-'); // row, col (여기서 row는 학생의 인덱스가 아님. 테이블 줄번호임)
+    const [r, c] = key.split('-'); 
     const val = pendingChanges[key];
-    
-    // 테이블 데이터에서 해당 셀 찾기
-    // student.rowNumber와 비교
     const student = currentTableData.students.find(s => s.rowNumber == r);
     if (student) {
       const att = student.attendance.find(a => a.colIndex == c);
@@ -183,37 +161,27 @@ async function executeSave() {
     }
   });
 
-  // 2. Firebase에 저장 (매우 빠름)
   const path = `attendance/${year}/${month}/${week}/${grade}-${cls}`;
   const updateRef = ref(db, path);
   
   try {
-    await update(updateRef, currentTableData); // Firebase 저장
+    await update(updateRef, currentTableData); 
     
-    // UI 업데이트 (성공 처리)
     keys.forEach(key => {
         const [r, c] = key.split('-');
         const cell = document.querySelector(`.check-cell[data-row="${r}"][data-col="${c}"]`);
         if (cell) cell.classList.remove('unsaved-cell');
     });
     
-    showToast("저장되었습니다! (동기화 중...)");
+    showToast("저장완료");
     pendingChanges = {};
     updateSaveButtonUI();
 
-    // 3. [백그라운드] 구글 시트에도 저장 (GAS로 전송) - 실패해도 UI는 이미 성공
-    // 비동기로 던져놓고 기다리지 않습니다.
     keys.forEach(key => {
       const [r, c] = key.split('-');
       const val = pendingChanges[key] || window.currentRenderedData.students.find(s=>s.rowNumber==r).attendance.find(a=>a.colIndex==c).value;
-      
-      const payload = {
-        action: "saveAttendance", year, row: r, col: c, value: val
-      };
-      
-      fetch(APPS_SCRIPT_URL, {
-        method: "POST", body: JSON.stringify(payload)
-      }).catch(err => console.log("시트 백업 실패 (괜찮음, FB엔 저장됨)", err));
+      const payload = { action: "saveAttendance", year, row: r, col: c, value: val };
+      fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).catch(err => console.log("시트 백업 실패", err));
     });
 
   } catch (error) {
@@ -224,13 +192,8 @@ async function executeSave() {
 }
 
 // ==========================================================
-// [UI 로직] (기존과 거의 동일, renderTable에서 데이터 저장 추가)
+// [UI 로직]
 // ==========================================================
-// ... (아래는 기존 UI 로직이므로 생략하지 않고 제공합니다)
-
-function toggleMobileMode(e) { /*...*/ if (e.target.tagName === 'LABEL' || e.target.tagName === 'DIV') { const c = document.getElementById('mobileModeCheck'); c.checked = !c.checked; } applyMobileMode(); }
-function applyMobileMode() { const m = document.getElementById('mobileModeCheck').checked; const b = document.body; if (m) b.classList.add('mobile-mode'); else b.classList.remove('mobile-mode'); localStorage.setItem('isMobileMode', m); }
-function restoreMobileMode() { const s = localStorage.getItem('isMobileMode'); const c = document.getElementById('mobileModeCheck'); if (s === 'true') { c.checked = true; document.body.classList.add('mobile-mode'); } else { c.checked = false; document.body.classList.remove('mobile-mode'); } }
 function saveState() { const s = { month: document.getElementById('monthSelect').value, week: document.getElementById('weekSelect').value, combinedClass: document.getElementById('classCombinedSelect').value }; localStorage.setItem('attendanceState', JSON.stringify(s)); }
 function getSavedState() { const s = localStorage.getItem('attendanceState'); return s ? JSON.parse(s) : null; }
 
@@ -285,9 +248,7 @@ function toggleReasonInput() {
 function getDayOfWeek(year, month, day) { const days = ['일', '월', '화', '수', '목', '금', '토']; const d = new Date(year, month - 1, day); return days[d.getDay()]; }
 
 function renderTable(data) {
-  // [중요] 저장 시 사용하기 위해 현재 데이터 전역 보관
   window.currentRenderedData = data;
-
   document.getElementById('loading').style.display = 'none';
   const container = document.getElementById('tableContainer');
   const year = CURRENT_YEAR; 
@@ -337,7 +298,6 @@ function formatValueToHtml(val) {
   if (match) return `<span class="mark-symbol">${match[1]}</span><span class="mark-note">(${match[2]})</span>`;
   return `<span class="mark-symbol">${val}</span>`;
 }
-function getSelectedOption() { const radios = document.getElementsByName('attType'); for (const r of radios) if (r.checked) return r.value; return ""; }
 function showToast(message) { const t = document.getElementById("toast-container"); t.textContent = message; t.className = "show"; setTimeout(()=>{t.className = t.className.replace("show", "");}, 3000); }
 function showConfirmModal() { document.getElementById('confirmModal').classList.add('show'); }
 function hideConfirmModal() { document.getElementById('confirmModal').classList.remove('show'); showToast("취소됨"); }
@@ -353,12 +313,12 @@ function queueUpdate(cell, newValue) {
 }
 function updateSaveButtonUI() {
   const btn = document.getElementById('saveBtn'); const count = Object.keys(pendingChanges).length;
-  if (count > 0) { btn.innerText = `저장 (${count}건)`; btn.disabled = false; btn.classList.add('active'); }
+  if (count > 0) { btn.innerText = `저장 (${count})`; btn.disabled = false; btn.classList.add('active'); }
   else { btn.innerText = "저장"; btn.disabled = true; btn.classList.remove('active'); }
 }
 function onSaveBtnClick() { if (Object.keys(pendingChanges).length === 0) return; showConfirmModal(); }
 
-// 드래그 로직 (기존 동일)
+// 드래그 로직
 function addDragListeners() { const cells = document.querySelectorAll('.check-cell'); cells.forEach(c => { c.addEventListener('mousedown', onMouseDown); c.addEventListener('mouseenter', onMouseEnter); c.addEventListener('touchstart', onTouchStart); c.addEventListener('touchmove', onTouchMove); c.addEventListener('touchend', onTouchEnd); }); document.addEventListener('mouseup', onMouseUp); }
 function addFocusListeners() { const cells = document.querySelectorAll('.check-cell'); cells.forEach(c => { c.addEventListener('mouseenter', onCellFocusEnter); c.addEventListener('mouseleave', onCellFocusLeave); c.addEventListener('touchstart', onCellFocusEnter, {passive: true}); }); }
 function highlightHeaders(cell) { const row = cell.closest('tr'); const col = cell.getAttribute('data-col'); const dhId = cell.getAttribute('data-date-header-id'); const nh = row.querySelector('.col-name'); if(nh) nh.classList.add('highlight-header'); const ph = document.querySelector(`thead tr:nth-child(2) th[data-col="${col}"]`); if(ph) ph.classList.add('highlight-header'); if(dhId){const dh=document.getElementById(dhId);if(dh)dh.classList.add('highlight-header');} }
@@ -373,5 +333,5 @@ function onTouchMove(e) { if(longPressTimer && !isMultiMode){clearTimeout(longPr
 function onTouchEnd() { if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;} if(isMultiMode) finishMultiSelect(); }
 function startMultiSelect(cell) { isMultiMode=true; clearHeaderHighlights(); selectedCells.clear(); const txt=cell.innerText.trim(); dragStartAction=(txt.length>0)?'clear':'fill'; addToSelection(cell); }
 function addToSelection(cell) { if(!selectedCells.has(cell)){selectedCells.add(cell); cell.classList.add('multi-selecting'); highlightHeaders(cell);} }
-function finishMultiSelect() { isMultiMode=false; clearHeaderHighlights(); let val=""; if(dragStartAction==='fill'){const s=getSelectedOption(); const r=document.getElementById('reasonInput').value.trim(); if(s!==""){val=s; if((s==="△"||s==="○")&&r!=="")val=`${s}(${r})`;}} selectedCells.forEach(c=>{c.classList.remove('multi-selecting'); queueUpdate(c, val);}); selectedCells.clear(); }
-function processSingleCell(cell) { if(isMultiMode)return; const txt=cell.innerText.trim(); let val=""; if(txt.length===0){const s=getSelectedOption(); const r=document.getElementById('reasonInput').value.trim(); if(s==="")return; val=s; if((s==="△"||s==="○")&&r!=="")val=`${s}(${r})`;} queueUpdate(cell, val); }
+function finishMultiSelect() { isMultiMode=false; clearHeaderHighlights(); let val=""; if(dragStartAction==='fill'){const s=document.querySelector('input[name="attType"]:checked').value; const r=document.getElementById('reasonInput').value.trim(); if(s!==""){val=s; if((s==="△"||s==="○")&&r!=="")val=`${s}(${r})`;}} selectedCells.forEach(c=>{c.classList.remove('multi-selecting'); queueUpdate(c, val);}); selectedCells.clear(); }
+function processSingleCell(cell) { if(isMultiMode)return; const txt=cell.innerText.trim(); let val=""; if(txt.length===0){const s=document.querySelector('input[name="attType"]:checked').value; const r=document.getElementById('reasonInput').value.trim(); if(s==="")return; val=s; if((s==="△"||s==="○")&&r!=="")val=`${s}(${r})`;} queueUpdate(cell, val); }
