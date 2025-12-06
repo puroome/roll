@@ -154,6 +154,10 @@ thead th.col-no, thead th.col-name { z-index: 150 !important; top: 0; height: 70
 .highlight-header { background-color: #d1e7dd !important; }
 .bg-date-1 { background-color: #e3f2fd; } 
 .bg-date-2 { background-color: #fff3e0; } 
+
+th.bg-date-1 { background-color: #bbdefb; }
+th.bg-date-2 { background-color: #ffe0b2; }
+
 .check-cell { cursor: pointer; line-height: 1.1; position: relative;}
 
 @keyframes blink-green-selecting {
@@ -204,3 +208,4 @@ thead th.col-no, thead th.col-name { z-index: 150 !important; top: 0; height: 70
 .modal-btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;}
 .modal-btn.cancel { background: #eee; }
 .modal-btn.confirm { background: #007bff; color: white; }
+
