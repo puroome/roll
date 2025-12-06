@@ -374,7 +374,7 @@ function onCellFocusLeave() { if (!isMultiMode) clearHeaderHighlights(); }
 function clearHeaderHighlights() { document.querySelectorAll('.highlight-header').forEach(el => el.classList.remove('highlight-header')); }
 
 function onMouseDown(e) { 
-  if (Date.now() - lastTouchTime < 50) return; 
+  if (Date.now() - lastTouchTime < 1000) return; 
   const cell = e.currentTarget;
   if (e.button === 0) {
     processSingleCell(cell);
@@ -452,3 +452,4 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
+
