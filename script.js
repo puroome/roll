@@ -1,3 +1,5 @@
+// script.js
+
 // ==========================================================
 // [1] Firebase 라이브러리
 // ==========================================================
@@ -20,6 +22,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+// ★ 중요: Code.gs를 배포한 후 생성된 "웹 앱 URL"을 여기에 정확히 입력해야 합니다.
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGOrVUl3r1fRjDrPXnG7uycNL0547aOrSdTiXLbG2ggooANum2hX4NFFg/exec";
 
 // ==========================================================
@@ -35,7 +38,7 @@ let longPressTimer = null;
 let dragStartCell = null;
 let pendingChanges = {};
 
-// [핵심] 마지막 터치 시간을 기록해서 "뒷북 마우스 클릭"을 무시하는 변수
+// [핵심] 뒷북 마우스 클릭 방지용 시간 기록
 let lastTouchTime = 0;
 
 // ==========================================================
@@ -146,6 +149,7 @@ async function executeSave() {
 
   const currentTableData = window.currentRenderedData; 
   
+  // 1. Firebase 데이터 업데이트 준비
   keys.forEach(key => {
     const [r, c] = key.split('-'); 
     const val = pendingChanges[key];
@@ -156,12 +160,24 @@ async function executeSave() {
     }
   });
 
+  // 2. 구글 시트 백업용 데이터 준비 (배열로 묶기)
+  const backupPayload = keys.map(key => {
+    const [r, c] = key.split('-');
+    // pendingChanges에 값이 있으면 그 값, 없으면 이미 렌더링된 값
+    const val = pendingChanges[key] !== undefined ? pendingChanges[key] : 
+                window.currentRenderedData.students.find(s=>s.rowNumber==r).attendance.find(a=>a.colIndex==c).value;
+    
+    return { year: year, row: r, col: c, value: val };
+  });
+
   const path = `attendance/${year}/${month}/${week}/${grade}-${cls}`;
   const updateRef = ref(db, path);
   
   try {
+    // 3. Firebase 저장 (빠름)
     await update(updateRef, currentTableData); 
     
+    // UI 업데이트 (붉은 테두리 제거)
     keys.forEach(key => {
         const [r, c] = key.split('-');
         const cell = document.querySelector(`.check-cell[data-row="${r}"][data-col="${c}"]`);
@@ -169,15 +185,27 @@ async function executeSave() {
     });
     
     showToast("저장완료");
+
+    // 4. 구글 시트 백업 (일괄 전송)
+    if (backupPayload.length > 0) {
+        const payload = { action: "saveAttendanceBatch", data: backupPayload };
+        fetch(APPS_SCRIPT_URL, { 
+            method: "POST", 
+            body: JSON.stringify(payload) 
+        })
+        .then(res => res.json())
+        .then(json => {
+            if(json.error) console.error("시트 백업 에러:", json.error);
+            else console.log("시트 백업 성공:", json.count + "건");
+        })
+        .catch(err => {
+            console.error("시트 통신 실패", err);
+            showToast("⚠️ 시트 백업 실패 (인터넷 확인)");
+        });
+    }
+
     pendingChanges = {};
     updateSaveButtonUI();
-
-    keys.forEach(key => {
-      const [r, c] = key.split('-');
-      const val = pendingChanges[key] || window.currentRenderedData.students.find(s=>s.rowNumber==r).attendance.find(a=>a.colIndex==c).value;
-      const payload = { action: "saveAttendance", year, row: r, col: c, value: val };
-      fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) }).catch(err => console.log("시트 백업 실패", err));
-    });
 
   } catch (error) {
     alert("저장 실패: " + error.message);
@@ -189,7 +217,14 @@ async function executeSave() {
 // ==========================================================
 // [UI 로직]
 // ==========================================================
-function saveState() { const s = { month: document.getElementById('monthSelect').value, week: document.getElementById('weekSelect').value, combinedClass: document.getElementById('classCombinedSelect').value }; localStorage.setItem('attendanceState', JSON.stringify(s)); }
+function saveState() { 
+  const s = { 
+    month: document.getElementById('monthSelect').value, 
+    week: document.getElementById('weekSelect').value, 
+    combinedClass: document.getElementById('classCombinedSelect').value 
+  }; 
+  localStorage.setItem('attendanceState', JSON.stringify(s)); 
+}
 function getSavedState() { const s = localStorage.getItem('attendanceState'); return s ? JSON.parse(s) : null; }
 
 function initUI(data) {
@@ -317,7 +352,7 @@ function updateSaveButtonUI() {
 function onSaveBtnClick() { if (Object.keys(pendingChanges).length === 0) return; showConfirmModal(); }
 
 // ==========================================================
-// [수정] 이벤트 핸들러: 터치와 마우스 충돌 방지
+// [이벤트] 드래그 및 터치
 // ==========================================================
 
 function addDragListeners() { 
@@ -338,11 +373,8 @@ function onCellFocusEnter(e) { if (isMultiMode) return; clearHeaderHighlights();
 function onCellFocusLeave() { if (!isMultiMode) clearHeaderHighlights(); }
 function clearHeaderHighlights() { document.querySelectorAll('.highlight-header').forEach(el => el.classList.remove('highlight-header')); }
 
-// [핵심 1] 마우스 클릭(mousedown)이 발생할 때, 
-// 최근에 터치(touchstart/touchend)가 있었다면 "아, 이건 안드로이드 뒷북이구나" 하고 무시합니다.
 function onMouseDown(e) { 
-  if (Date.now() - lastTouchTime < 50) return; // 터치 후 0.5초 동안 마우스 무시
-  
+  if (Date.now() - lastTouchTime < 50) return; 
   const cell = e.currentTarget;
   if (e.button === 0) {
     processSingleCell(cell);
@@ -356,9 +388,8 @@ function onMouseDown(e) {
 function onMouseEnter(e) { if(isMultiMode) addToSelection(e.currentTarget); }
 function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
 
-// [핵심 2] 터치가 시작되면 시간을 기록합니다.
 function onTouchStart(e) { 
-  lastTouchTime = Date.now(); // 시간 기록
+  lastTouchTime = Date.now(); 
   const cell = e.currentTarget;
   dragStartCell = cell; 
   longPressTimer = setTimeout(() => { 
@@ -372,9 +403,8 @@ function onTouchMove(e) {
   if(isMultiMode){e.preventDefault(); const t=e.touches[0]; const target=document.elementFromPoint(t.clientX, t.clientY); if(target){const c=target.closest('.check-cell'); if(c) addToSelection(c);}}
 }
 
-// [핵심 3] 터치가 끝나도 시간을 기록합니다. (이때 보통 마우스 이벤트가 발생하므로 방어)
 function onTouchEnd(e) { 
-  lastTouchTime = Date.now(); // 시간 기록
+  lastTouchTime = Date.now(); 
   if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;} 
   if(isMultiMode) finishMultiSelect(); 
 }
@@ -383,11 +413,8 @@ function startMultiSelect(cell) {
   isMultiMode=true; 
   clearHeaderHighlights(); 
   selectedCells.clear(); 
-  
-  // 데이터 존재 여부 판단 (태그 확인 방식 유지)
   const hasData = cell.querySelector('.mark-symbol') !== null;
   dragStartAction = hasData ? 'clear' : 'fill'; 
-  
   addToSelection(cell); 
 }
 
@@ -423,6 +450,5 @@ function processSingleCell(cell) {
     val=s; 
     if((s==="△"||s==="○")&&r!=="") val=`${s}(${r})`;
   } 
-  
   queueUpdate(cell, val); 
 }
