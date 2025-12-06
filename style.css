@@ -3,13 +3,13 @@
 /* 전체 레이아웃 */
 body { 
   font-family: 'Malgun Gothic', sans-serif; 
-  padding: 5px; /* 전체 패딩 줄임 */
+  padding: 5px; 
   background-color: #f8f9fa; 
   display: flex; flex-direction: column; 
   height: 98vh; box-sizing: border-box; 
   user-select: none; -webkit-user-select: none;
   margin: 0;
-  overflow: hidden; /* 전체 스크롤 방지 */
+  overflow: hidden; 
 }
 
 /* 컨트롤 박스 - 한 줄 배치 최적화 */
@@ -19,23 +19,23 @@ body {
   background: white; padding: 8px; border-radius: 8px; 
   box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
   margin-bottom: 5px;
-  overflow-x: auto; /* 화면이 아주 좁을 때만 가로 스크롤 허용 */
+  overflow-x: auto; 
 }
 
 .control-row { 
   display: flex; 
   align-items: center; 
-  gap: 4px; /* 간격 최소화 */
-  flex-wrap: nowrap; /* 줄바꿈 방지 (한 줄 강제) */
+  gap: 4px; 
+  flex-wrap: nowrap; 
   white-space: nowrap;
 }
 
-/* 폰트 크기 및 높이 축소 (요청사항 3번: 80% 수준) */
+/* 폰트 크기 및 높이 축소 (80% 수준) */
 select, input[type="text"], button { 
-  height: 30px; /* 높이 줄임 */
+  height: 30px; 
   padding: 0 2px 0 4px; 
   border-radius: 4px; border: 1px solid #ddd; 
-  font-size: 12px; /* 폰트 줄임 */
+  font-size: 12px; 
   box-sizing: border-box; vertical-align: middle;
 }
 
@@ -48,7 +48,7 @@ select { min-width: 40px; cursor: pointer; }
   border: none; border-radius: 4px;
   font-weight: bold; font-size: 12px;
   cursor: default; transition: all 0.2s;
-  flex-shrink: 0; /* 버튼 찌그러짐 방지 */
+  flex-shrink: 0; 
 }
 #saveBtn.active {
   background-color: #007bff;
@@ -63,7 +63,7 @@ select { min-width: 40px; cursor: pointer; }
   flex-shrink: 0;
 }
 .radio-group label { 
-  cursor: pointer; font-weight: bold; font-size: 11px; /* 폰트 더 줄임 */
+  cursor: pointer; font-weight: bold; font-size: 11px; 
   display: flex; align-items: center; margin: 0; color: #444; 
 }
 .radio-group input { margin-right: 2px; cursor: pointer; transform: scale(0.9); }
@@ -76,18 +76,21 @@ select { min-width: 40px; cursor: pointer; }
 
 /* 테이블 영역 */
 .table-wrapper { 
-  flex-grow: 1; overflow: auto; 
+  flex-grow: 1; 
+  overflow: auto; /* 스크롤 필수 */
   background: white; border-radius: 8px; 
   box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
   padding-bottom: 5px;
   position: relative; 
-  /* 높이 계산 수정 */
   height: calc(100vh - 60px); 
   touch-action: pan-x pan-y; 
+  -webkit-overflow-scrolling: touch; /* 모바일 부드러운 스크롤 */
 }
 
 table { 
-  width: max-content; min-width: 100%;
+  /* [핵심 수정] max-content를 주어 내용물만큼 무조건 늘어나게 강제함 */
+  width: max-content; 
+  min-width: 100%;
   border-collapse: separate; border-spacing: 0; 
   table-layout: fixed; 
 }
@@ -97,9 +100,10 @@ th, td {
   text-align: center; vertical-align: middle;
   overflow: hidden; white-space: nowrap; padding: 0;
   box-sizing: border-box;
-  height: 35px; /* 셀 높이 적당히 조정 */
+  height: 35px; 
   font-size: 13px; 
-  width: 45px; min-width: 45px;
+  /* [핵심 수정] width를 min-width로도 강력하게 고정 */
+  width: 45px; min-width: 45px; 
 }
 
 thead { position: sticky; top: 0; z-index: 100; }
@@ -112,22 +116,24 @@ th {
 
 thead tr:nth-child(2) th { top: 35px; z-index: 50; }
 
-/* [수정] 번호, 이름 열 너비 축소 (요청사항 1번) */
+/* 번호, 이름 열 너비 축소 */
 .col-no, tbody td:first-child {
   position: sticky; left: 0;
-  width: 30px !important; min-width: 30px !important; /* 기존 40px -> 30px */
+  /* [핵심 수정] 너비 강제 고정 */
+  width: 30px !important; min-width: 30px !important; 
   background-color: #fff; border-right: 1px solid #ddd;
   font-size: 11px; z-index: 60; color: #666;
 }
 .col-name, tbody td:nth-child(2) {
-  position: sticky; left: 30px; /* col-no 너비만큼 이동 */
-  width: 55px !important; min-width: 55px !important; /* 기존 80px -> 55px */
+  position: sticky; left: 30px; 
+  /* [핵심 수정] 너비 강제 고정 */
+  width: 55px !important; min-width: 55px !important; 
   background-color: #fff; border-right: 2px solid #bbb; 
   font-weight: bold; z-index: 60;
   font-size: 13px;
 }
 
-thead th.col-no, thead th.col-name { z-index: 150 !important; top: 0; height: 70px; /* 2줄 합친 높이 */ }
+thead th.col-no, thead th.col-name { z-index: 150 !important; top: 0; height: 70px; }
 
 /* 하이라이트 및 상태 효과 */
 .highlight-header { background-color: #d1e7dd !important; }
