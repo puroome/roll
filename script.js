@@ -341,7 +341,7 @@ function clearHeaderHighlights() { document.querySelectorAll('.highlight-header'
 // [핵심 1] 마우스 클릭(mousedown)이 발생할 때, 
 // 최근에 터치(touchstart/touchend)가 있었다면 "아, 이건 안드로이드 뒷북이구나" 하고 무시합니다.
 function onMouseDown(e) { 
-  if (Date.now() - lastTouchTime < 500) return; // 터치 후 0.5초 동안 마우스 무시
+  if (Date.now() - lastTouchTime < 50) return; // 터치 후 0.5초 동안 마우스 무시
   
   const cell = e.currentTarget;
   if (e.button === 0) {
@@ -364,7 +364,7 @@ function onTouchStart(e) {
   longPressTimer = setTimeout(() => { 
     if(navigator.vibrate) navigator.vibrate(50); 
     startMultiSelect(cell); 
-  }, 500); 
+  }, 300); 
 }
 
 function onTouchMove(e) { 
@@ -426,4 +426,5 @@ function processSingleCell(cell) {
   
   queueUpdate(cell, val); 
 }
+
 
