@@ -16,37 +16,44 @@ body {
 .controls { 
   flex-shrink: 0; 
   display: flex; flex-direction: column; 
-  background: white; padding: 5px; /* 패딩 더 줄임 */
+  background: white; padding: 5px; 
   border-radius: 8px; 
   box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
   margin-bottom: 5px;
   overflow-x: auto; 
 }
 
+/* [핵심 수정] 좌-중-우 배치 */
 .control-row { 
   display: flex; 
   align-items: center; 
-  gap: 2px; /* 간격 더 줄임 */
+  justify-content: space-between; /* 양 끝과 중앙으로 배치 */
+  gap: 5px; 
   flex-wrap: nowrap; 
   white-space: nowrap;
+  width: 100%;
 }
 
-/* [핵심 수정] 드롭다운 버튼 스타일 최적화 */
+.group-left, .group-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* 드롭다운 버튼 (텍스트 공간 확보를 위해 너비 살짝 조정) */
 select { 
   height: 30px; 
-  padding: 0; /* 내부 여백 0으로 제거 */
-  text-align: center; /* 텍스트 중앙 정렬 */
+  padding: 0; 
+  text-align: center; 
   border-radius: 4px; border: 1px solid #ddd; 
   font-size: 13px; font-weight: bold;
   box-sizing: border-box; vertical-align: middle;
   cursor: pointer;
-  min-width: 35px; /* 최소 너비 약간 줄임 */
-  appearance: none; /* 브라우저 기본 화살표 제거 (공간 확보용) */
+  min-width: 45px; /* "12월" 글자 들어갈 공간 확보 */
+  appearance: none; 
   -webkit-appearance: none;
-  background-image: none; /* 화살표 그림 제거 (깔끔하게 숫자만) */
   background-color: #fff;
 }
-/* 선택된 옵션이 중앙에 오도록 */
 select:focus { outline: none; border-color: #007bff; }
 
 /* 일반 입력창 및 버튼 */
@@ -58,12 +65,13 @@ input[type="text"], button {
   box-sizing: border-box; vertical-align: middle;
 }
 
-/* 저장 버튼 */
+/* 저장 버튼 (중앙 배치) */
 #saveBtn {
   background-color: #ccc; color: white;
   border: none; font-weight: bold; 
   cursor: default; transition: all 0.2s;
   flex-shrink: 0; 
+  padding: 0 15px; /* 버튼 크기 확보 */
 }
 #saveBtn.active { background-color: #007bff; cursor: pointer; }
 #saveBtn.active:hover { background-color: #0056b3; }
@@ -84,9 +92,9 @@ input[type="text"], button {
 #reasonInput { width: 50px; font-size: 11px; text-align: center; }
 #reasonInput:disabled { background-color: #f9f9f9; }
 
-#loading { color: #007bff; font-weight: bold; font-size: 11px; display: none; margin-left: 5px; }
+#loading { color: #007bff; font-weight: bold; font-size: 11px; }
 
-/* 테이블 영역 (스크롤 강제 적용 유지) */
+/* 테이블 영역 (삼성 브라우저 스크롤 문제 해결 유지) */
 .table-wrapper { 
   flex-grow: 1; 
   overflow: auto; 
@@ -113,7 +121,7 @@ th, td {
   box-sizing: border-box;
   height: 35px; 
   font-size: 13px; 
-  width: 45px; min-width: 45px; /* 셀 너비 고정 */
+  width: 45px; min-width: 45px; 
 }
 
 thead { position: sticky; top: 0; z-index: 100; }
