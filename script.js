@@ -341,7 +341,7 @@ function clearHeaderHighlights() { document.querySelectorAll('.highlight-header'
 // [핵심 1] 마우스 클릭(mousedown)이 발생할 때, 
 // 최근에 터치(touchstart/touchend)가 있었다면 "아, 이건 안드로이드 뒷북이구나" 하고 무시합니다.
 function onMouseDown(e) { 
-  if (Date.now() - lastTouchTime < 100) return; // 터치 후 0.5초 동안 마우스 무시
+  if (Date.now() - lastTouchTime < 50) return; // 터치 후 0.5초 동안 마우스 무시
   
   const cell = e.currentTarget;
   if (e.button === 0) {
@@ -358,20 +358,11 @@ function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
 
 // [핵심 2] 터치가 시작되면 시간을 기록합니다.
 function onTouchStart(e) { 
-  isTouchInteraction = true; 
+  lastTouchTime = Date.now(); // 시간 기록
   const cell = e.currentTarget;
   dragStartCell = cell; 
-  
-  startTouchX = e.touches[0].clientX;
-  startTouchY = e.touches[0].clientY;
-
-  // [핵심 해결책] 
-  // 아주 짧은 진동(1ms)을 "직접" 호출해서 브라우저의 진동 차단을 풉니다.
-  // 사람은 못 느끼지만, 이 코드가 있어야 타이머 속 진동이 작동합니다.
-  if (navigator.vibrate) navigator.vibrate(1); 
-
   longPressTimer = setTimeout(() => { 
-    if(navigator.vibrate) navigator.vibrate(50); // 이제 첫 터치에도 이 진동이 울립니다!
+    if(navigator.vibrate) navigator.vibrate(50); 
     startMultiSelect(cell); 
   }, 300); 
 }
@@ -435,6 +426,4 @@ function processSingleCell(cell) {
   
   queueUpdate(cell, val); 
 }
-
-
 
