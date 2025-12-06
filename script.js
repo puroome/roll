@@ -35,6 +35,9 @@ let longPressTimer = null;
 let dragStartCell = null;
 let pendingChanges = {};
 
+// [핵심] 마지막 터치 시간을 기록해서 "뒷북 마우스 클릭"을 무시하는 변수
+let lastTouchTime = 0;
+
 // ==========================================================
 // [초기화]
 // ==========================================================
@@ -314,29 +317,74 @@ function updateSaveButtonUI() {
 function onSaveBtnClick() { if (Object.keys(pendingChanges).length === 0) return; showConfirmModal(); }
 
 // ==========================================================
-// [이벤트 리스너] 드래그 및 터치 로직 (수정됨)
+// [수정] 이벤트 핸들러: 터치와 마우스 충돌 방지
 // ==========================================================
 
-function addDragListeners() { const cells = document.querySelectorAll('.check-cell'); cells.forEach(c => { c.addEventListener('mousedown', onMouseDown); c.addEventListener('mouseenter', onMouseEnter); c.addEventListener('touchstart', onTouchStart); c.addEventListener('touchmove', onTouchMove); c.addEventListener('touchend', onTouchEnd); }); document.addEventListener('mouseup', onMouseUp); }
+function addDragListeners() { 
+  const cells = document.querySelectorAll('.check-cell'); 
+  cells.forEach(c => { 
+    c.addEventListener('mousedown', onMouseDown); 
+    c.addEventListener('mouseenter', onMouseEnter); 
+    c.addEventListener('touchstart', onTouchStart); 
+    c.addEventListener('touchmove', onTouchMove); 
+    c.addEventListener('touchend', onTouchEnd); 
+  }); 
+  document.addEventListener('mouseup', onMouseUp); 
+}
+
 function addFocusListeners() { const cells = document.querySelectorAll('.check-cell'); cells.forEach(c => { c.addEventListener('mouseenter', onCellFocusEnter); c.addEventListener('mouseleave', onCellFocusLeave); c.addEventListener('touchstart', onCellFocusEnter, {passive: true}); }); }
 function highlightHeaders(cell) { const row = cell.closest('tr'); const col = cell.getAttribute('data-col'); const dhId = cell.getAttribute('data-date-header-id'); const nh = row.querySelector('.col-name'); if(nh) nh.classList.add('highlight-header'); const ph = document.querySelector(`thead tr:nth-child(2) th[data-col="${col}"]`); if(ph) ph.classList.add('highlight-header'); if(dhId){const dh=document.getElementById(dhId);if(dh)dh.classList.add('highlight-header');} }
 function onCellFocusEnter(e) { if (isMultiMode) return; clearHeaderHighlights(); highlightHeaders(e.currentTarget); }
 function onCellFocusLeave() { if (!isMultiMode) clearHeaderHighlights(); }
 function clearHeaderHighlights() { document.querySelectorAll('.highlight-header').forEach(el => el.classList.remove('highlight-header')); }
-function onMouseDown(e) { if(e.button===0) processSingleCell(e.currentTarget); else if(e.button===2) startMultiSelect(e.currentTarget); }
+
+// [핵심 1] 마우스 클릭(mousedown)이 발생할 때, 
+// 최근에 터치(touchstart/touchend)가 있었다면 "아, 이건 안드로이드 뒷북이구나" 하고 무시합니다.
+function onMouseDown(e) { 
+  if (Date.now() - lastTouchTime < 500) return; // 터치 후 0.5초 동안 마우스 무시
+  
+  const cell = e.currentTarget;
+  if (e.button === 0) {
+    processSingleCell(cell);
+    return;
+  }
+  if (e.button === 2) {
+    startMultiSelect(cell);
+  }
+}
+
 function onMouseEnter(e) { if(isMultiMode) addToSelection(e.currentTarget); }
 function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
-function onTouchStart(e) { dragStartCell = e.currentTarget; longPressTimer = setTimeout(() => { if(navigator.vibrate)navigator.vibrate(50); startMultiSelect(e.currentTarget); }, 1000); }
-function onTouchMove(e) { if(longPressTimer && !isMultiMode){clearTimeout(longPressTimer);longPressTimer=null;} if(isMultiMode){e.preventDefault(); const t=e.touches[0]; const target=document.elementFromPoint(t.clientX, t.clientY); if(target){const c=target.closest('.check-cell'); if(c) addToSelection(c);}}}
-function onTouchEnd() { if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;} if(isMultiMode) finishMultiSelect(); }
 
-// [핵심 수정] 텍스트 길이 대신 실제 데이터 요소(.mark-symbol) 존재 여부로 판단
+// [핵심 2] 터치가 시작되면 시간을 기록합니다.
+function onTouchStart(e) { 
+  lastTouchTime = Date.now(); // 시간 기록
+  const cell = e.currentTarget;
+  dragStartCell = cell; 
+  longPressTimer = setTimeout(() => { 
+    if(navigator.vibrate) navigator.vibrate(50); 
+    startMultiSelect(cell); 
+  }, 1000); 
+}
+
+function onTouchMove(e) { 
+  if(longPressTimer && !isMultiMode){clearTimeout(longPressTimer);longPressTimer=null;} 
+  if(isMultiMode){e.preventDefault(); const t=e.touches[0]; const target=document.elementFromPoint(t.clientX, t.clientY); if(target){const c=target.closest('.check-cell'); if(c) addToSelection(c);}}
+}
+
+// [핵심 3] 터치가 끝나도 시간을 기록합니다. (이때 보통 마우스 이벤트가 발생하므로 방어)
+function onTouchEnd(e) { 
+  lastTouchTime = Date.now(); // 시간 기록
+  if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;} 
+  if(isMultiMode) finishMultiSelect(); 
+}
+
 function startMultiSelect(cell) { 
   isMultiMode=true; 
   clearHeaderHighlights(); 
   selectedCells.clear(); 
   
-  // 데이터가 있는지 확인 (공백 문자 등에 속지 않기 위해 태그 확인)
+  // 데이터 존재 여부 판단 (태그 확인 방식 유지)
   const hasData = cell.querySelector('.mark-symbol') !== null;
   dragStartAction = hasData ? 'clear' : 'fill'; 
   
@@ -363,10 +411,8 @@ function finishMultiSelect() {
   selectedCells.clear(); 
 }
 
-// [핵심 수정] 단일 클릭 시에도 동일한 로직 적용
 function processSingleCell(cell) { 
   if(isMultiMode) return; 
-  
   const hasData = cell.querySelector('.mark-symbol') !== null;
   let val = ""; 
   
