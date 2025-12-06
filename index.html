@@ -7,16 +7,13 @@
   <link rel="stylesheet" href="style.css">
   
   <script type="module">
-    // script.js에서도 쓸 수 있게 전역 window 객체에 할당하지 않고,
-    // script.js를 module 타입으로 불러와서 내부에서 처리합니다.
+    // script.js에서 처리하므로 비워둡니다.
   </script>
 </head>
 <body>
-  <div id="mobileToggleContainer">
-    <input type="checkbox" id="mobileModeCheck">
-    <label for="mobileModeCheck">모바일 모드</label>
-  </div>
+  
   <div id="toast-container"></div>
+
   <div id="confirmModal" class="modal-overlay">
     <div class="modal-box">
       <div class="modal-title">저장 확인</div>
@@ -27,27 +24,26 @@
       </div>
     </div>
   </div>
+
   <div class="controls">
     <div class="control-row">
-      <div class="left-group">
-        <select id="monthSelect"><option>월</option></select>
-        <select id="weekSelect"><option>주</option></select>
-        <select id="classCombinedSelect"><option>반</option></select>
-        <span id="loading">Loading...</span>
+      <select id="monthSelect"><option>월</option></select>
+      <select id="weekSelect"><option>주</option></select>
+      <select id="classCombinedSelect"><option>반</option></select>
+      
+      <button id="saveBtn" disabled>저장</button>
+
+      <div class="radio-group">
+        <label><input type="radio" name="attType" value="△" checked>인정△</label>
+        <label><input type="radio" name="attType" value="○">병○</label>
+        <label><input type="radio" name="attType" value="Ⅹ">무단Ⅹ</label>
       </div>
-      <div class="center-group">
-        <button id="saveBtn" disabled>저장</button>
-      </div>
-      <div class="right-group">
-        <div class="radio-group">
-          <label><input type="radio" name="attType" value="△" checked>인정△</label>
-          <label><input type="radio" name="attType" value="○">병○</label>
-          <label><input type="radio" name="attType" value="Ⅹ">무단Ⅹ</label>
-        </div>
-        <input type="text" id="reasonInput" placeholder="사유" disabled>
-      </div>
+      <input type="text" id="reasonInput" placeholder="사유" disabled>
+      
+      <span id="loading">Loading...</span>
     </div>
   </div>
+
   <div id="tableContainer" class="table-wrapper">
     <div style="padding:40px; text-align:center; color:#888;">상단에서 조건을 선택해주세요.</div>
   </div>
