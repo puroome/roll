@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="style.css">
   
   <script type="module">
-    // script.js에서 처리하므로 비워둡니다.
   </script>
 </head>
 <body>
@@ -27,21 +26,24 @@
 
   <div class="controls">
     <div class="control-row">
-      <select id="monthSelect"><option>월</option></select>
-      <select id="weekSelect"><option>주</option></select>
-      <select id="classCombinedSelect"><option>반</option></select>
-      
-      <button id="saveBtn" disabled>저장</button>
-
-      <div class="radio-group">
-        <label><input type="radio" name="attType" value="△" checked>인정△</label>
-        <label><input type="radio" name="attType" value="○">병○</label>
-        <label><input type="radio" name="attType" value="Ⅹ">무단Ⅹ</label>
+      <div class="group-left">
+        <select id="monthSelect"><option>월</option></select>
+        <select id="weekSelect"><option>주</option></select>
+        <select id="classCombinedSelect"><option>반</option></select>
       </div>
-      <input type="text" id="reasonInput" placeholder="사유" disabled>
+
+      <button id="saveBtn" disabled>저장</button>
       
-      <span id="loading">Loading...</span>
+      <div class="group-right">
+        <div class="radio-group">
+          <label><input type="radio" name="attType" value="△" checked>인정△</label>
+          <label><input type="radio" name="attType" value="○">병○</label>
+          <label><input type="radio" name="attType" value="Ⅹ">무단Ⅹ</label>
+        </div>
+        <input type="text" id="reasonInput" placeholder="사유" disabled>
+      </div>
     </div>
+    <span id="loading" style="text-align:center; display:none;">Loading...</span>
   </div>
 
   <div id="tableContainer" class="table-wrapper">
