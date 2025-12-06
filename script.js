@@ -202,7 +202,6 @@ function initUI(data) {
   }
 }
 
-// [핵심 수정] "월" 다시 추가
 function setupYearData(year) {
   const info = globalData[year];
   const mSel = document.getElementById('monthSelect');
@@ -211,12 +210,10 @@ function setupYearData(year) {
   cSel.innerHTML = '<option value="">반</option>';
   document.getElementById('weekSelect').innerHTML = '<option value="">주</option>';
   
-  // m + '월' 로 텍스트 변경
   info.months.forEach(m => mSel.add(new Option(m + '월', m))); 
   info.grades.forEach(g => { info.classes.forEach(c => { cSel.add(new Option(`${g}-${c}`, `${g}-${c}`)); }); });
 }
 
-// [핵심 수정] "주" 다시 추가
 function onMonthChange(isRestoring = false) {
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
@@ -226,7 +223,6 @@ function onMonthChange(isRestoring = false) {
   if (!month || !globalData[year]) return;
   const weeks = globalData[year].weeks[month];
   
-  // w + '주' 로 텍스트 변경
   if (weeks) { weeks.forEach(w => wSel.add(new Option(w + '주', w))); }
   
   if (isRestoring) {
@@ -317,7 +313,10 @@ function updateSaveButtonUI() {
 }
 function onSaveBtnClick() { if (Object.keys(pendingChanges).length === 0) return; showConfirmModal(); }
 
-// 드래그 로직 (기존 동일)
+// ==========================================================
+// [이벤트 리스너] 드래그 및 터치 로직 (수정됨)
+// ==========================================================
+
 function addDragListeners() { const cells = document.querySelectorAll('.check-cell'); cells.forEach(c => { c.addEventListener('mousedown', onMouseDown); c.addEventListener('mouseenter', onMouseEnter); c.addEventListener('touchstart', onTouchStart); c.addEventListener('touchmove', onTouchMove); c.addEventListener('touchend', onTouchEnd); }); document.addEventListener('mouseup', onMouseUp); }
 function addFocusListeners() { const cells = document.querySelectorAll('.check-cell'); cells.forEach(c => { c.addEventListener('mouseenter', onCellFocusEnter); c.addEventListener('mouseleave', onCellFocusLeave); c.addEventListener('touchstart', onCellFocusEnter, {passive: true}); }); }
 function highlightHeaders(cell) { const row = cell.closest('tr'); const col = cell.getAttribute('data-col'); const dhId = cell.getAttribute('data-date-header-id'); const nh = row.querySelector('.col-name'); if(nh) nh.classList.add('highlight-header'); const ph = document.querySelector(`thead tr:nth-child(2) th[data-col="${col}"]`); if(ph) ph.classList.add('highlight-header'); if(dhId){const dh=document.getElementById(dhId);if(dh)dh.classList.add('highlight-header');} }
@@ -330,7 +329,54 @@ function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
 function onTouchStart(e) { dragStartCell = e.currentTarget; longPressTimer = setTimeout(() => { if(navigator.vibrate)navigator.vibrate(50); startMultiSelect(e.currentTarget); }, 1000); }
 function onTouchMove(e) { if(longPressTimer && !isMultiMode){clearTimeout(longPressTimer);longPressTimer=null;} if(isMultiMode){e.preventDefault(); const t=e.touches[0]; const target=document.elementFromPoint(t.clientX, t.clientY); if(target){const c=target.closest('.check-cell'); if(c) addToSelection(c);}}}
 function onTouchEnd() { if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;} if(isMultiMode) finishMultiSelect(); }
-function startMultiSelect(cell) { isMultiMode=true; clearHeaderHighlights(); selectedCells.clear(); const txt=cell.innerText.trim(); dragStartAction=(txt.length>0)?'clear':'fill'; addToSelection(cell); }
+
+// [핵심 수정] 텍스트 길이 대신 실제 데이터 요소(.mark-symbol) 존재 여부로 판단
+function startMultiSelect(cell) { 
+  isMultiMode=true; 
+  clearHeaderHighlights(); 
+  selectedCells.clear(); 
+  
+  // 데이터가 있는지 확인 (공백 문자 등에 속지 않기 위해 태그 확인)
+  const hasData = cell.querySelector('.mark-symbol') !== null;
+  dragStartAction = hasData ? 'clear' : 'fill'; 
+  
+  addToSelection(cell); 
+}
+
 function addToSelection(cell) { if(!selectedCells.has(cell)){selectedCells.add(cell); cell.classList.add('multi-selecting'); highlightHeaders(cell);} }
-function finishMultiSelect() { isMultiMode=false; clearHeaderHighlights(); let val=""; if(dragStartAction==='fill'){const s=document.querySelector('input[name="attType"]:checked').value; const r=document.getElementById('reasonInput').value.trim(); if(s!==""){val=s; if((s==="△"||s==="○")&&r!=="")val=`${s}(${r})`;}} selectedCells.forEach(c=>{c.classList.remove('multi-selecting'); queueUpdate(c, val);}); selectedCells.clear(); }
-function processSingleCell(cell) { if(isMultiMode)return; const txt=cell.innerText.trim(); let val=""; if(txt.length===0){const s=document.querySelector('input[name="attType"]:checked').value; const r=document.getElementById('reasonInput').value.trim(); if(s==="")return; val=s; if((s==="△"||s==="○")&&r!=="")val=`${s}(${r})`;} queueUpdate(cell, val); }
+
+function finishMultiSelect() { 
+  isMultiMode=false; 
+  clearHeaderHighlights(); 
+  let val=""; 
+  
+  if(dragStartAction==='fill'){
+    const s = document.querySelector('input[name="attType"]:checked').value; 
+    const r = document.getElementById('reasonInput').value.trim(); 
+    if(s!==""){
+      val=s; 
+      if((s==="△"||s==="○")&&r!=="") val=`${s}(${r})`;
+    }
+  } 
+  
+  selectedCells.forEach(c=>{c.classList.remove('multi-selecting'); queueUpdate(c, val);}); 
+  selectedCells.clear(); 
+}
+
+// [핵심 수정] 단일 클릭 시에도 동일한 로직 적용
+function processSingleCell(cell) { 
+  if(isMultiMode) return; 
+  
+  const hasData = cell.querySelector('.mark-symbol') !== null;
+  let val = ""; 
+  
+  if(!hasData){
+    const s = document.querySelector('input[name="attType"]:checked').value; 
+    const r = document.getElementById('reasonInput').value.trim(); 
+    if(s==="") return; 
+    val=s; 
+    if((s==="△"||s==="○")&&r!=="") val=`${s}(${r})`;
+  } 
+  
+  queueUpdate(cell, val); 
+}
