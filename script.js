@@ -5,7 +5,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getDatabase, ref, get, update, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 // ==========================================================
-// [2] 선생님의 Firebase 설정
+// [2] Firebase 설정
 // ==========================================================
 const firebaseConfig = {
   apiKey: "AIzaSyAB1JoulqyMqo3KxS64igennc_dIPKLz7E",
@@ -21,7 +21,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// 구글 앱스 스크립트 URL (백그라운드 저장용)
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGOrVUl3r1fRjDrPXnG7uycNL0547aOrSdTiXLbG2ggooANum2hX4NFFg/exec";
 
 // ==========================================================
@@ -50,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.hideConfirmModal = hideConfirmModal;
   window.executeSave = executeSave;
 
-  // 이벤트 리스너 등록
+  // 이벤트 리스너
   document.getElementById('monthSelect').addEventListener('change', () => { onMonthChange(); saveState(); });
   document.getElementById('weekSelect').addEventListener('change', () => { loadStudents(); saveState(); });
   document.getElementById('classCombinedSelect').addEventListener('change', () => { loadStudents(); saveState(); });
@@ -70,16 +69,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   toggleReasonInput();
-  // 모바일 모드 관련 로직 삭제됨
-  
-  // [핵심] Firebase에서 초기 데이터 가져오기
   fetchInitDataFromFirebase();
 });
 
 // ==========================================================
-// [통신 함수] Firebase 중심
+// [통신 함수]
 // ==========================================================
-
 async function fetchInitDataFromFirebase() {
   document.getElementById('loading').style.display = 'inline';
   const dbRef = ref(db);
@@ -210,17 +205,22 @@ function initUI(data) {
   }
 }
 
+// [핵심 수정] "월" 글자 빼고 숫자만 표시
 function setupYearData(year) {
   const info = globalData[year];
   const mSel = document.getElementById('monthSelect');
   const cSel = document.getElementById('classCombinedSelect'); 
-  mSel.innerHTML = '<option value="">월</option>';
+  mSel.innerHTML = '<option value="">월</option>'; // 기본 placeholder는 "월" 유지 (선택 전)
   cSel.innerHTML = '<option value="">반</option>';
   document.getElementById('weekSelect').innerHTML = '<option value="">주</option>';
-  info.months.forEach(m => mSel.add(new Option(m + '월', m)));
+  
+  // 숫자만 보여주도록 수정 (m + '월' -> m)
+  info.months.forEach(m => mSel.add(new Option(m, m))); 
+
   info.grades.forEach(g => { info.classes.forEach(c => { cSel.add(new Option(`${g}-${c}`, `${g}-${c}`)); }); });
 }
 
+// [핵심 수정] "주" 글자 빼고 숫자만 표시
 function onMonthChange(isRestoring = false) {
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
@@ -229,7 +229,10 @@ function onMonthChange(isRestoring = false) {
   wSel.innerHTML = '<option value="">주</option>'; 
   if (!month || !globalData[year]) return;
   const weeks = globalData[year].weeks[month];
-  if (weeks) { weeks.forEach(w => wSel.add(new Option(w + '주', w))); }
+  
+  // 숫자만 보여주도록 수정 (w + '주' -> w)
+  if (weeks) { weeks.forEach(w => wSel.add(new Option(w, w))); }
+  
   if (isRestoring) {
      const s = getSavedState();
      if (s.week) { const o = Array.from(wSel.options).find(opt => opt.value == s.week); if (o) wSel.value = s.week; }
@@ -318,7 +321,7 @@ function updateSaveButtonUI() {
 }
 function onSaveBtnClick() { if (Object.keys(pendingChanges).length === 0) return; showConfirmModal(); }
 
-// 드래그 로직
+// 드래그 로직 (기존 동일)
 function addDragListeners() { const cells = document.querySelectorAll('.check-cell'); cells.forEach(c => { c.addEventListener('mousedown', onMouseDown); c.addEventListener('mouseenter', onMouseEnter); c.addEventListener('touchstart', onTouchStart); c.addEventListener('touchmove', onTouchMove); c.addEventListener('touchend', onTouchEnd); }); document.addEventListener('mouseup', onMouseUp); }
 function addFocusListeners() { const cells = document.querySelectorAll('.check-cell'); cells.forEach(c => { c.addEventListener('mouseenter', onCellFocusEnter); c.addEventListener('mouseleave', onCellFocusLeave); c.addEventListener('touchstart', onCellFocusEnter, {passive: true}); }); }
 function highlightHeaders(cell) { const row = cell.closest('tr'); const col = cell.getAttribute('data-col'); const dhId = cell.getAttribute('data-date-header-id'); const nh = row.querySelector('.col-name'); if(nh) nh.classList.add('highlight-header'); const ph = document.querySelector(`thead tr:nth-child(2) th[data-col="${col}"]`); if(ph) ph.classList.add('highlight-header'); if(dhId){const dh=document.getElementById(dhId);if(dh)dh.classList.add('highlight-header');} }
