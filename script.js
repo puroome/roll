@@ -56,7 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('monthSelect').addEventListener('change', () => { onMonthChange(); saveState(); });
   document.getElementById('weekSelect').addEventListener('change', () => { loadStudents(); saveState(); });
   document.getElementById('classCombinedSelect').addEventListener('change', () => { loadStudents(); saveState(); });
-  document.getElementById('saveBtn').addEventListener('click', onSaveBtnClick);
+  
+  // [수정] 기존 저장 버튼 리스너 제거됨 (버튼이 없으므로)
+  
   document.getElementById('modalCancelBtn').addEventListener('click', hideConfirmModal);
   document.getElementById('modalConfirmBtn').addEventListener('click', executeSave);
   
@@ -70,9 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
       e.returnValue = '';
     }
   });
-
-  // [추가] 리사이즈 시 높이 재조정
-  window.addEventListener('resize', adjustRowHeight);
 
   toggleReasonInput();
   fetchInitDataFromFirebase();
@@ -101,8 +100,10 @@ async function fetchInitDataFromFirebase() {
 
 async function loadStudents() {
   pendingChanges = {};
-  updateSaveButtonUI();
-
+  
+  // 테이블을 다시 로드하므로 UI 초기화 필요 (하지만 renderTable 내에서 처리됨)
+  // 여기서는 단순히 변수만 초기화
+  
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
   const week = document.getElementById('weekSelect').value;
@@ -123,6 +124,7 @@ async function loadStudents() {
     const snapshot = await get(child(dbRef, path));
     if (snapshot.exists()) {
       renderTable(snapshot.val());
+      updateSaveButtonUI(); // 렌더링 후 버튼 상태 초기화
     } else {
       document.getElementById('tableContainer').innerHTML = '<div style="padding:20px; text-align:center;">데이터 없음</div>';
     }
@@ -138,9 +140,9 @@ async function executeSave() {
   const keys = Object.keys(pendingChanges);
   if (keys.length === 0) return;
 
-  const btn = document.getElementById('saveBtn');
-  btn.innerText = "...";
-  btn.disabled = true;
+  // [수정] 버튼 대신 헤더의 텍스트 변경
+  const nameHeader = document.querySelector('thead th.col-name');
+  if(nameHeader) nameHeader.innerText = "...";
 
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
@@ -211,8 +213,7 @@ async function executeSave() {
 
   } catch (error) {
     alert("저장 실패: " + error.message);
-    btn.disabled = false;
-    btn.innerText = "저장";
+    updateSaveButtonUI(); // 실패 시 원래 텍스트로 복구
   }
 }
 
@@ -297,6 +298,7 @@ function renderTable(data) {
     dayMap[att.day].count++;
   });
 
+  // [수정] 테이블 헤더 "이름" 클래스 유지
   let html = '<table><thead><tr><th rowspan="2" class="col-no">번호</th><th rowspan="2" class="col-name">이름</th>';
   let dateHeaderIdCounter = 0; let currentDay = null;
   
@@ -304,7 +306,6 @@ function renderTable(data) {
     if (att.day !== currentDay) {
       currentDay = att.day; const info = dayMap[currentDay]; const dayOfWeek = getDayOfWeek(year, data.meta.month, currentDay);
       info.headerId = `date-header-${dateHeaderIdCounter++}`;
-      // [수정] 날짜 헤더 생성 (클릭 이벤트를 위해 클래스 유지)
       html += `<th id="${info.headerId}" colspan="${info.count}" class="header-day ${info.colorClass}">${data.meta.month}월 ${currentDay}일 (${dayOfWeek})</th>`;
     }
   });
@@ -326,62 +327,15 @@ function renderTable(data) {
   html += '</tbody></table>';
   container.innerHTML = html;
 
-  // [추가] 날짜 클릭 시 저장 기능 연결
-  container.querySelectorAll('.header-day').forEach(header => {
-    header.addEventListener('click', () => {
-        if(Object.keys(pendingChanges).length > 0) {
-            onSaveBtnClick(); // 기존 저장 버튼(모달) 로직 실행
-        } else {
-            showToast("변경사항이 없습니다.");
-        }
-    });
-  });
+  // [수정] "이름" 헤더에 저장 클릭 이벤트 리스너 추가
+  const nameHeader = container.querySelector('thead th.col-name');
+  if (nameHeader) {
+      nameHeader.addEventListener('click', onSaveBtnClick);
+  }
+  // [수정] 현재 상태에 따라 버튼(이름 헤더) UI 갱신
+  updateSaveButtonUI();
 
-  addDragListeners(); 
-  addFocusListeners();
-
-  // [추가] 높이 자동 조절
-  adjustRowHeight();
-}
-
-// [추가] 행 높이 자동 조절 함수
-function adjustRowHeight() {
-    const tableContainer = document.getElementById('tableContainer');
-    const table = tableContainer.querySelector('table');
-    if (!table) return;
-
-    const rows = table.querySelectorAll('tbody tr');
-    if (rows.length === 0) return;
-
-    // 1. 사용 가능한 높이 계산
-    const controlsHeight = document.querySelector('.controls').offsetHeight;
-    const theadHeight = table.querySelector('thead').offsetHeight;
-    const windowHeight = window.innerHeight;
-    const availableHeight = windowHeight - controlsHeight - theadHeight - 20;
-
-    // 2. 행 당 적절한 높이 계산
-    const calculatedHeight = availableHeight / rows.length;
-    const defaultHeight = 35; 
-
-    // 3. 로직: 명단이 길어서 짤릴 때만 줄임
-    let finalHeight = defaultHeight;
-    if (calculatedHeight < defaultHeight) {
-        finalHeight = calculatedHeight;
-    }
-
-    // 4. 스타일 적용
-    rows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        cells.forEach(td => {
-            td.style.height = `${finalHeight}px`;
-            // 높이가 너무 작아지면 폰트도 줄임
-            if (finalHeight < 25) {
-                td.style.fontSize = '11px';
-            } else {
-                td.style.fontSize = '13px';
-            }
-        });
-    });
+  addDragListeners(); addFocusListeners();
 }
 
 function formatValueToHtml(val) {
@@ -400,13 +354,9 @@ function queueUpdate(cell, newValue) {
 
   // 2. [수정됨] 깜빡임 효과 실행 및 자동 제거
   cell.classList.remove('flash-success'); 
-  void cell.offsetWidth; // 리플로우 강제 (애니메이션 리셋용)
+  void cell.offsetWidth; 
   cell.classList.add('flash-success');
-
-  // ★ 0.5초 뒤에 애니메이션 클래스를 지워서 원래 배경색이 나오도록 함
-  setTimeout(() => {
-    cell.classList.remove('flash-success');
-  }, 500);
+  setTimeout(() => { cell.classList.remove('flash-success'); }, 500);
 
   // 3. 좌표 및 키 생성
   const r = cell.getAttribute('data-row'); 
@@ -423,13 +373,11 @@ function queueUpdate(cell, newValue) {
     }
   }
 
-  // 5. 변경 여부 판단 (원래 값과 비교)
+  // 5. 변경 여부 판단
   if (newValue === originalValue) {
-    // 원래 값으로 돌아왔다면 -> 저장 목록 & 빨간 테두리 제거
     delete pendingChanges[key];
     cell.classList.remove('unsaved-cell');
   } else {
-    // 값이 변경되었다면 -> 저장 목록 & 빨간 테두리 추가
     pendingChanges[key] = newValue;
     cell.classList.add('unsaved-cell');
   }
@@ -437,11 +385,23 @@ function queueUpdate(cell, newValue) {
   // 6. 버튼 UI 갱신
   updateSaveButtonUI();
 }
+
+// [수정] 저장 버튼 역할을 하는 "이름" 헤더 UI 업데이트
 function updateSaveButtonUI() {
-  const btn = document.getElementById('saveBtn'); const count = Object.keys(pendingChanges).length;
-  if (count > 0) { btn.innerText = `저장 (${count})`; btn.disabled = false; btn.classList.add('active'); }
-  else { btn.innerText = "저장"; btn.disabled = true; btn.classList.remove('active'); }
+  const count = Object.keys(pendingChanges).length;
+  const nameHeader = document.querySelector('thead th.col-name');
+  
+  if (!nameHeader) return;
+
+  if (count > 0) { 
+      nameHeader.innerText = `저장 (${count})`; 
+      nameHeader.classList.add('save-active'); 
+  } else { 
+      nameHeader.innerText = "이름"; 
+      nameHeader.classList.remove('save-active'); 
+  }
 }
+
 function onSaveBtnClick() { if (Object.keys(pendingChanges).length === 0) return; showConfirmModal(); }
 
 // ==========================================================
@@ -545,14 +505,3 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
-
-// ==========================================================
-// [Android 연동 인터페이스]
-// ==========================================================
-window.checkUnsavedChanges = function() {
-    return Object.keys(pendingChanges).length > 0;
-};
-
-window.forceSave = function() {
-    executeSave();
-};
