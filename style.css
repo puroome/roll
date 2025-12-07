@@ -10,8 +10,6 @@ body {
   user-select: none; -webkit-user-select: none;
   margin: 0;
   overflow: hidden; 
-  /* [수정] 스와이프 새로고침 방지 (Android WebView 바운스 방지) */
-  overscroll-behavior-y: none;
 }
 
 /* 컨트롤 박스 */
@@ -57,18 +55,13 @@ select {
 }
 select:focus { outline: none; border-color: #007bff; }
 
-/* 일반 입력창 및 버튼 */
-input[type="text"], button { 
+/* 일반 입력창 */
+input[type="text"] { 
   height: 30px; 
   padding: 0 5px; 
   border-radius: 4px; border: 1px solid #ddd; 
   font-size: 12px; 
   box-sizing: border-box; vertical-align: middle;
-}
-
-/* [수정] 저장 버튼 숨김 (요청사항 2번) */
-#saveBtn {
-  display: none !important;
 }
 
 /* 라디오 그룹 */
@@ -114,10 +107,18 @@ th, td {
   text-align: center; vertical-align: middle;
   overflow: hidden; white-space: nowrap; padding: 0;
   box-sizing: border-box;
-  /* [수정] 기본 높이는 유지하되 JS에서 조절 가능하도록 설정 */
-  height: 35px; 
   font-size: 13px; 
   width: 45px; min-width: 45px; 
+}
+
+/* [수정 2] 헤더 높이 축소 (기존 35px -> 25px) */
+th {
+  height: 25px; 
+}
+
+/* [수정 3] 본문 행 높이 축소 (기존 35px * 0.95 ≈ 33px) */
+td {
+  height: 33px; 
 }
 
 thead { position: sticky; top: 0; z-index: 100; }
@@ -128,35 +129,55 @@ th {
   border-bottom: 1px solid #ddd;
 }
 
-/* [추가] 날짜 헤더 클릭 가능 표시 (요청사항 2번) */
-.header-day {
-  cursor: pointer;
-}
-.header-day:active {
-  background-color: #d1e7dd; /* 클릭 시 눌리는 효과 */
-}
+/* [수정 2] 2번째 헤더 행 위치 조정 (1번째 행 높이가 25px이므로 top: 25px) */
+thead tr:nth-child(2) th { top: 25px; z-index: 50; }
 
-thead tr:nth-child(2) th { top: 35px; z-index: 50; }
-
-/* 번호, 이름 열 너비 */
+/* 번호, 이름 열 너비 및 스타일 */
 .col-no, tbody td:first-child {
   position: sticky; left: 0;
   width: 30px !important; min-width: 30px !important; 
   background-color: #fff; border-right: 1px solid #ddd;
   font-size: 11px; z-index: 60; color: #666;
 }
+
+/* [수정 1] 이름 영역 스타일 (저장 버튼 역할) */
 .col-name, tbody td:nth-child(2) {
   position: sticky; left: 30px; 
   width: 55px !important; min-width: 55px !important; 
-  background-color: #fff; border-right: 2px solid #bbb; 
+  border-right: 2px solid #bbb; 
   font-weight: bold; z-index: 60;
   font-size: 13px;
 }
 
-thead th.col-no, thead th.col-name { z-index: 150 !important; top: 0; height: 70px; }
+/* tbody의 이름 열은 흰색 배경 유지 */
+tbody td:nth-child(2) {
+  background-color: #fff; 
+}
+
+/* [수정 1] thead의 이름 열(저장 버튼) 디자인 */
+thead th.col-name {
+  background-color: #d1e7dd !important; /* 파스텔톤 녹색 */
+  color: #0f5132;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 150 !important; 
+  top: 0; 
+  /* [수정 2] rowspan=2 이므로 25px * 2 = 50px */
+  height: 50px; 
+}
+
+/* 저장할 데이터가 있을 때 활성화 스타일 (JS에서 클래스 추가) */
+thead th.col-name.save-active {
+  background-color: #198754 !important; /* 진한 녹색 */
+  color: white;
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+}
+
+/* 번호 열 헤더 높이도 2행 합침이므로 50px로 조정 */
+thead th.col-no { z-index: 150 !important; top: 0; height: 50px; }
 
 /* 하이라이트 및 효과 */
-.highlight-header { background-color: #d1e7dd !important; }
+.highlight-header { background-color: #cff4fc !important; } /* 헤더 하이라이트 색상 미세 조정 */
 .bg-date-1 { background-color: #e3f2fd; } 
 .bg-date-2 { background-color: #fff3e0; } 
 
