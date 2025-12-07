@@ -394,10 +394,12 @@ function updateSaveButtonUI() {
   if (!nameHeader) return;
 
   if (count > 0) { 
-      nameHeader.innerText = `저장 (${count})`; 
+      // [변경] innerText -> innerHTML 로 변경하고 <br> 태그 추가
+      nameHeader.innerHTML = `저장<br>(${count})`; 
       nameHeader.classList.add('save-active'); 
   } else { 
-      nameHeader.innerText = "이름"; 
+      // [변경] 저장할 것이 없으면 다시 "이름"으로
+      nameHeader.innerHTML = "이름"; 
       nameHeader.classList.remove('save-active'); 
   }
 }
@@ -505,3 +507,4 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
+
