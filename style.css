@@ -9,6 +9,7 @@ body {
   height: 98vh; box-sizing: border-box; 
   user-select: none; -webkit-user-select: none;
   margin: 0;
+  width: 100vw;
   overflow: hidden; 
 
   /* [수정] 너비를 화면(100%)에 고정 -> 표가 더 커도 몸통이 늘어나지 않음 (스크롤 발생) */
@@ -90,6 +91,7 @@ input[type="text"] {
 /* 테이블 영역 */
 .table-wrapper { 
   flex-grow: 1; 
+  width: 100%;
   overflow: auto; 
   background: white; border-radius: 8px; 
   box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
@@ -229,3 +231,4 @@ th.bg-date-2 { background-color: #ffe0b2; }
 .overscroll-y-none {
   overscroll-behavior-y: none;
 }
+
