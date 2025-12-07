@@ -418,7 +418,7 @@ function onMouseEnter(e) { if(isMultiMode) addToSelection(e.currentTarget); }
 function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
 
 function onTouchStart(e) { 
-  // [핵심 수정] 첫 터치 시 브라우저 진동 잠금을 풀기 위한 '노크' (1ms 진동)
+  // [수정] 첫 터치 시 브라우저 진동 잠금을 풀기 위한 '노크' (1ms 진동)
   if(navigator.vibrate) navigator.vibrate(1);
 
   lastTouchTime = Date.now(); 
