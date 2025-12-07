@@ -9,10 +9,6 @@ body {
   height: 98vh; box-sizing: border-box; 
   user-select: none; -webkit-user-select: none;
   margin: 0;
-  
-  /* [핵심 수정] 화면 축소 방지를 위한 강제 설정 */
-  width: 100%;
-  max-width: 100vw;
   overflow: hidden; 
 }
 
@@ -25,10 +21,6 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
   margin-bottom: 5px;
   overflow-x: auto; 
-  
-  /* [핵심 수정] 자식 요소가 부모를 뚫고 나가 줌아웃 되는 것 방지 */
-  min-width: 0;
-  width: 100%;
 }
 
 .control-row { 
@@ -101,10 +93,6 @@ input[type="text"] {
   height: calc(100vh - 60px); 
   touch-action: pan-x pan-y; 
   -webkit-overflow-scrolling: touch;
-  
-  /* [핵심 수정] 가로 스크롤이 내부에서만 돌도록 설정 */
-  width: 100%;
-  min-width: 0;
 }
 
 table { 
@@ -123,8 +111,15 @@ th, td {
   width: 45px; min-width: 45px; 
 }
 
-th { height: 25px; }
-td { height: 33px; }
+/* [수정 2] 헤더 높이 축소 (기존 35px -> 25px) */
+th {
+  height: 25px; 
+}
+
+/* [수정 3] 본문 행 높이 축소 (기존 35px * 0.95 ≈ 33px) */
+td {
+  height: 33px; 
+}
 
 thead { position: sticky; top: 0; z-index: 100; }
 
@@ -134,8 +129,10 @@ th {
   border-bottom: 1px solid #ddd;
 }
 
+/* [수정 2] 2번째 헤더 행 위치 조정 (1번째 행 높이가 25px이므로 top: 25px) */
 thead tr:nth-child(2) th { top: 25px; z-index: 50; }
 
+/* 번호, 이름 열 너비 및 스타일 */
 .col-no, tbody td:first-child {
   position: sticky; left: 0;
   width: 30px !important; min-width: 30px !important; 
@@ -143,6 +140,7 @@ thead tr:nth-child(2) th { top: 25px; z-index: 50; }
   font-size: 11px; z-index: 60; color: #666;
 }
 
+/* [수정 1] 이름 영역 스타일 (저장 버튼 역할) */
 .col-name, tbody td:nth-child(2) {
   position: sticky; left: 30px; 
   width: 55px !important; min-width: 55px !important; 
@@ -151,31 +149,40 @@ thead tr:nth-child(2) th { top: 25px; z-index: 50; }
   font-size: 13px;
 }
 
-tbody td:nth-child(2) { background-color: #fff; }
+/* tbody의 이름 열은 흰색 배경 유지 */
+tbody td:nth-child(2) {
+  background-color: #fff; 
+}
 
+/* [수정 1] thead의 이름 열(저장 버튼) 디자인 */
 thead th.col-name {
-  background-color: #d1e7dd !important; 
+  background-color: #d1e7dd !important; /* 파스텔톤 녹색 */
   color: #0f5132;
   cursor: pointer;
   transition: all 0.2s;
   z-index: 150 !important; 
   top: 0; 
+  /* [수정 2] rowspan=2 이므로 25px * 2 = 50px */
   height: 50px; 
   white-space: normal !important; 
   line-height: 1.2;
 }
 
+/* 저장할 데이터가 있을 때 활성화 스타일 (JS에서 클래스 추가) */
 thead th.col-name.save-active {
-  background-color: #198754 !important; 
+  background-color: #198754 !important; /* 진한 녹색 */
   color: white;
   box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 }
 
+/* 번호 열 헤더 높이도 2행 합침이므로 50px로 조정 */
 thead th.col-no { z-index: 150 !important; top: 0; height: 50px; }
 
-.highlight-header { background-color: #cff4fc !important; }
+/* 하이라이트 및 효과 */
+.highlight-header { background-color: #cff4fc !important; } /* 헤더 하이라이트 색상 미세 조정 */
 .bg-date-1 { background-color: #e3f2fd; } 
 .bg-date-2 { background-color: #fff3e0; } 
+
 th.bg-date-1 { background-color: #bbdefb; }
 th.bg-date-2 { background-color: #ffe0b2; }
 
@@ -215,7 +222,7 @@ th.bg-date-2 { background-color: #ffe0b2; }
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background-color: rgba(0, 0, 0, 0.5); z-index: 4000;
   display: flex; align-items: center; justify-content: center;
-  opacity: 1; visibility: hidden; transition: all 0.3s;
+  opacity: 0; visibility: hidden; transition: all 0.3s;
 }
 .modal-overlay.show { opacity: 1; visibility: visible; }
 .modal-box {
@@ -229,7 +236,7 @@ th.bg-date-2 { background-color: #ffe0b2; }
 .modal-btn.cancel { background: #eee; }
 .modal-btn.confirm { background: #007bff; color: white; }
 
-/* [추가] 아래로 당겨서 새로고침 방지용 */
+/* [새로 추가] 아래로 당겨서 새로고침 막기용 클래스 */
 .overscroll-y-none {
   overscroll-behavior-y: none;
 }
