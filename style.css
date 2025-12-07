@@ -236,3 +236,7 @@ th.bg-date-2 { background-color: #ffe0b2; }
 .modal-btn.cancel { background: #eee; }
 .modal-btn.confirm { background: #007bff; color: white; }
 
+/* [새로 추가] 아래로 당겨서 새로고침 막기용 클래스 */
+.overscroll-y-none {
+  overscroll-behavior-y: none;
+}
