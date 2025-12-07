@@ -22,7 +22,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ★ 중요: Code.gs를 배포한 후 생성된 "웹 앱 URL"을 여기에 정확히 입력해야 합니다.
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGOrVUl3r1fRjDrPXnG7uycNL0547aOrSdTiXLbG2ggooANum2hX4NFFg/exec";
 
 // ==========================================================
@@ -37,8 +36,6 @@ let dragStartAction = null;
 let longPressTimer = null;
 let dragStartCell = null;
 let pendingChanges = {};
-
-// [핵심] 뒷북 마우스 클릭 방지용 시간 기록
 let lastTouchTime = 0;
 
 // ==========================================================
@@ -56,8 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('monthSelect').addEventListener('change', () => { onMonthChange(); saveState(); });
   document.getElementById('weekSelect').addEventListener('change', () => { loadStudents(); saveState(); });
   document.getElementById('classCombinedSelect').addEventListener('change', () => { loadStudents(); saveState(); });
-  
-  // [수정] 기존 저장 버튼 리스너 제거됨 (버튼이 없으므로)
   
   document.getElementById('modalCancelBtn').addEventListener('click', hideConfirmModal);
   document.getElementById('modalConfirmBtn').addEventListener('click', executeSave);
@@ -101,9 +96,6 @@ async function fetchInitDataFromFirebase() {
 async function loadStudents() {
   pendingChanges = {};
   
-  // 테이블을 다시 로드하므로 UI 초기화 필요 (하지만 renderTable 내에서 처리됨)
-  // 여기서는 단순히 변수만 초기화
-  
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
   const week = document.getElementById('weekSelect').value;
@@ -124,7 +116,7 @@ async function loadStudents() {
     const snapshot = await get(child(dbRef, path));
     if (snapshot.exists()) {
       renderTable(snapshot.val());
-      updateSaveButtonUI(); // 렌더링 후 버튼 상태 초기화
+      updateSaveButtonUI();
     } else {
       document.getElementById('tableContainer').innerHTML = '<div style="padding:20px; text-align:center;">데이터 없음</div>';
     }
@@ -140,7 +132,6 @@ async function executeSave() {
   const keys = Object.keys(pendingChanges);
   if (keys.length === 0) return;
 
-  // [수정] 버튼 대신 헤더의 텍스트 변경
   const nameHeader = document.querySelector('thead th.col-name');
   if(nameHeader) nameHeader.innerText = "...";
 
@@ -154,7 +145,6 @@ async function executeSave() {
 
   const currentTableData = window.currentRenderedData; 
   
-  // 1. Firebase 데이터 업데이트 준비
   keys.forEach(key => {
     const [r, c] = key.split('-'); 
     const val = pendingChanges[key];
@@ -165,7 +155,6 @@ async function executeSave() {
     }
   });
 
-  // 2. 구글 시트 백업용 데이터 준비 (배열로 묶기)
   const backupPayload = keys.map(key => {
     const [r, c] = key.split('-');
     const val = pendingChanges[key] !== undefined ? pendingChanges[key] : 
@@ -178,10 +167,8 @@ async function executeSave() {
   const updateRef = ref(db, path);
   
   try {
-    // 3. Firebase 저장 (빠름)
     await update(updateRef, currentTableData); 
     
-    // UI 업데이트 (붉은 테두리 제거)
     keys.forEach(key => {
         const [r, c] = key.split('-');
         const cell = document.querySelector(`.check-cell[data-row="${r}"][data-col="${c}"]`);
@@ -190,7 +177,6 @@ async function executeSave() {
     
     showToast("저장완료");
 
-    // 4. 구글 시트 백업 (일괄 전송)
     if (backupPayload.length > 0) {
         const payload = { action: "saveAttendanceBatch", data: backupPayload };
         fetch(APPS_SCRIPT_URL, { 
@@ -213,7 +199,7 @@ async function executeSave() {
 
   } catch (error) {
     alert("저장 실패: " + error.message);
-    updateSaveButtonUI(); // 실패 시 원래 텍스트로 복구
+    updateSaveButtonUI();
   }
 }
 
@@ -298,7 +284,6 @@ function renderTable(data) {
     dayMap[att.day].count++;
   });
 
-  // [수정] 테이블 헤더 "이름" 클래스 유지
   let html = '<table><thead><tr><th rowspan="2" class="col-no">번호</th><th rowspan="2" class="col-name">이름</th>';
   let dateHeaderIdCounter = 0; let currentDay = null;
   
@@ -327,12 +312,10 @@ function renderTable(data) {
   html += '</tbody></table>';
   container.innerHTML = html;
 
-  // [수정] "이름" 헤더에 저장 클릭 이벤트 리스너 추가
   const nameHeader = container.querySelector('thead th.col-name');
   if (nameHeader) {
       nameHeader.addEventListener('click', onSaveBtnClick);
   }
-  // [수정] 현재 상태에 따라 버튼(이름 헤더) UI 갱신
   updateSaveButtonUI();
 
   addDragListeners(); addFocusListeners();
@@ -349,21 +332,17 @@ function showConfirmModal() { document.getElementById('confirmModal').classList.
 function hideConfirmModal() { document.getElementById('confirmModal').classList.remove('show'); showToast("취소됨"); }
 
 function queueUpdate(cell, newValue) {
-  // 1. 화면에 값 표시
   cell.innerHTML = formatValueToHtml(newValue);
 
-  // 2. [수정됨] 깜빡임 효과 실행 및 자동 제거
   cell.classList.remove('flash-success'); 
   void cell.offsetWidth; 
   cell.classList.add('flash-success');
   setTimeout(() => { cell.classList.remove('flash-success'); }, 500);
 
-  // 3. 좌표 및 키 생성
   const r = cell.getAttribute('data-row'); 
   const c = cell.getAttribute('data-col');
   const key = `${r}-${c}`;
 
-  // 4. 원본 데이터 찾기 (DB 값)
   let originalValue = "";
   if (window.currentRenderedData && window.currentRenderedData.students) {
     const student = window.currentRenderedData.students.find(s => s.rowNumber == r);
@@ -373,7 +352,6 @@ function queueUpdate(cell, newValue) {
     }
   }
 
-  // 5. 변경 여부 판단
   if (newValue === originalValue) {
     delete pendingChanges[key];
     cell.classList.remove('unsaved-cell');
@@ -382,11 +360,9 @@ function queueUpdate(cell, newValue) {
     cell.classList.add('unsaved-cell');
   }
 
-  // 6. 버튼 UI 갱신
   updateSaveButtonUI();
 }
 
-// [수정] 저장 버튼 역할을 하는 "이름" 헤더 UI 업데이트
 function updateSaveButtonUI() {
   const count = Object.keys(pendingChanges).length;
   const nameHeader = document.querySelector('thead th.col-name');
@@ -394,11 +370,9 @@ function updateSaveButtonUI() {
   if (!nameHeader) return;
 
   if (count > 0) { 
-      // [변경] innerText -> innerHTML 로 변경하고 <br> 태그 추가
       nameHeader.innerHTML = `저장<br>(${count})`; 
       nameHeader.classList.add('save-active'); 
   } else { 
-      // [변경] 저장할 것이 없으면 다시 "이름"으로
       nameHeader.innerHTML = "이름"; 
       nameHeader.classList.remove('save-active'); 
   }
@@ -444,6 +418,9 @@ function onMouseEnter(e) { if(isMultiMode) addToSelection(e.currentTarget); }
 function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
 
 function onTouchStart(e) { 
+  // [핵심 수정] 첫 터치 시 브라우저 진동 잠금을 풀기 위한 '노크' (1ms 진동)
+  if(navigator.vibrate) navigator.vibrate(1);
+
   lastTouchTime = Date.now(); 
   const cell = e.currentTarget;
   dragStartCell = cell; 
@@ -507,4 +484,3 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
-
