@@ -505,3 +505,29 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
+
+// [추가] 안드로이드 뒤로가기 버튼 처리
+document.addEventListener("deviceready", function() {
+    document.addEventListener("backbutton", function(e) {
+        e.preventDefault();
+        
+        // 1. 모달창이 열려있으면 닫기
+        const modal = document.getElementById('confirmModal');
+        if (modal && modal.classList.contains('show')) {
+            hideConfirmModal();
+            return;
+        }
+
+        // 2. 그 외의 상황이면 앱 종료 확인창 띄우기 (또는 바로 종료)
+        // confirm 대신 앱 자체 종료 기능을 호출 시도
+        if (confirm("앱을 종료하시겠습니까?")) {
+            if (navigator.app && navigator.app.exitApp) {
+                navigator.app.exitApp(); // 코르도바 기반 앱 종료
+            } else if (navigator.device && navigator.device.exitApp) {
+                navigator.device.exitApp();
+            } else {
+                window.close(); // 일반 웹 종료 시도
+            }
+        }
+    }, false);
+}, false);
