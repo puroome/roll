@@ -505,30 +505,3 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
-
-// [앱 종료 기능 강제 추가]
-// 이 코드는 앱이 준비되면(deviceready), 뒤로가기 버튼을 감시합니다.
-document.addEventListener("deviceready", () => {
-  document.addEventListener("backbutton", (e) => {
-    e.preventDefault(); // 기본 동작 막기
-
-    // 1. 만약 모달창이 열려있다면? -> 모달 닫기
-    const modal = document.getElementById('confirmModal');
-    if (modal && modal.classList.contains('show')) {
-      hideConfirmModal();
-      return;
-    }
-
-    // 2. 그 외의 경우 (메인 화면) -> 앱 종료 시도
-    if (confirm("앱을 종료하시겠습니까?")) {
-      // 안드로이드 앱 강제 종료 명령
-      if (navigator.app) {
-        navigator.app.exitApp();
-      } else if (navigator.device) {
-        navigator.device.exitApp();
-      } else {
-        window.close();
-      }
-    }
-  }, false);
-}, false);
