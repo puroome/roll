@@ -10,6 +10,8 @@ body {
   user-select: none; -webkit-user-select: none;
   margin: 0;
   overflow: hidden; 
+  /* [수정] 스와이프 새로고침 방지 (Android WebView 바운스 방지) */
+  overscroll-behavior-y: none;
 }
 
 /* 컨트롤 박스 */
@@ -64,16 +66,10 @@ input[type="text"], button {
   box-sizing: border-box; vertical-align: middle;
 }
 
-/* 저장 버튼 */
+/* [수정] 저장 버튼 숨김 (요청사항 2번) */
 #saveBtn {
-  background-color: #ccc; color: white;
-  border: none; font-weight: bold; 
-  cursor: default; transition: all 0.2s;
-  flex-shrink: 0; 
-  padding: 0 15px; 
+  display: none !important;
 }
-#saveBtn.active { background-color: #007bff; cursor: pointer; }
-#saveBtn.active:hover { background-color: #0056b3; }
 
 /* 라디오 그룹 */
 .radio-group { 
@@ -118,6 +114,7 @@ th, td {
   text-align: center; vertical-align: middle;
   overflow: hidden; white-space: nowrap; padding: 0;
   box-sizing: border-box;
+  /* [수정] 기본 높이는 유지하되 JS에서 조절 가능하도록 설정 */
   height: 35px; 
   font-size: 13px; 
   width: 45px; min-width: 45px; 
@@ -129,6 +126,14 @@ th {
   font-weight: bold; background-color: #f8f9fa; color: #444; 
   position: sticky; top: 0; z-index: 50;
   border-bottom: 1px solid #ddd;
+}
+
+/* [추가] 날짜 헤더 클릭 가능 표시 (요청사항 2번) */
+.header-day {
+  cursor: pointer;
+}
+.header-day:active {
+  background-color: #d1e7dd; /* 클릭 시 눌리는 효과 */
 }
 
 thead tr:nth-child(2) th { top: 35px; z-index: 50; }
@@ -203,9 +208,7 @@ th.bg-date-2 { background-color: #ffe0b2; }
 }
 .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
 .modal-body { font-size: 14px; margin-bottom: 20px; color: #555; }
-/* [수정] 버튼 간격 3배로 증가 (10px -> 30px) */
 .modal-footer { display: flex; gap: 30px; justify-content: center; }
 .modal-btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;}
 .modal-btn.cancel { background: #eee; }
 .modal-btn.confirm { background: #007bff; color: white; }
-
