@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.puroome.roll",
+        "sha256_cert_fingerprints": ["DF:B3:4C:8A:AD:B1:9B:5A:2D:AC:C7:52:F9:5A:A6:F9:00:C5:D7:9C:6E:48:66:5C:AF:74:4E:B3:C2:49:8F:68"]
+      }
+    }]
