@@ -4,9 +4,13 @@
   <meta charset="UTF-8">
   <title>출석부</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon_192.png">
+
   <link rel="stylesheet" href="style.css?v=1">
 </head>
-<body>
+<body class="overscroll-y-none">
   
   <div id="toast-container"></div>
 
@@ -46,6 +50,13 @@
   </div>
 
   <script type="module" src="script.js?v=1"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('서비스 워커 등록 성공'))
+        .catch(() => console.log('서비스 워커 등록 실패'));
+    }
+  </script>
 </body>
 </html>
-
