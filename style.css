@@ -2,7 +2,7 @@
 
 /* 전체 레이아웃 */
 body { 
-  font-family: 'Malgun Gothic', sans-serif; 
+  font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; 
   padding: 5px; 
   background-color: #f8f9fa; 
   display: flex; flex-direction: column; 
@@ -164,6 +164,8 @@ thead th.col-name {
   top: 0; 
   /* [수정 2] rowspan=2 이므로 25px * 2 = 50px */
   height: 50px; 
+  white-space: normal !important; 
+  line-height: 1.2;
 }
 
 /* 저장할 데이터가 있을 때 활성화 스타일 (JS에서 클래스 추가) */
@@ -233,3 +235,4 @@ th.bg-date-2 { background-color: #ffe0b2; }
 .modal-btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;}
 .modal-btn.cancel { background: #eee; }
 .modal-btn.confirm { background: #007bff; color: white; }
+
