@@ -42,13 +42,6 @@ let lastTouchTime = 0;
 // [초기화]
 // ==========================================================
 document.addEventListener('DOMContentLoaded', () => {
-  
-  // [핵심] 첫 터치 시 '진동 잠금 해제'를 위한 1회성 리스너
-  document.body.addEventListener('touchstart', function unlockVibration() {
-    if (navigator.vibrate) navigator.vibrate(1); // 1ms 미세 진동으로 권한 획득
-    document.body.removeEventListener('touchstart', unlockVibration);
-  }, { once: true });
-
   window.onSaveBtnClick = onSaveBtnClick;
   window.onMonthChange = onMonthChange;
   window.loadStudents = loadStudents;
@@ -425,7 +418,7 @@ function onMouseEnter(e) { if(isMultiMode) addToSelection(e.currentTarget); }
 function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
 
 function onTouchStart(e) { 
-  // [핵심] 여기서도 혹시 모르니 노크 (진동)
+  // [핵심 수정] 첫 터치 시 브라우저 진동 잠금을 풀기 위한 '노크' (1ms 진동)
   if(navigator.vibrate) navigator.vibrate(1);
 
   lastTouchTime = Date.now(); 
