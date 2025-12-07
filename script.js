@@ -336,18 +336,25 @@ function showConfirmModal() { document.getElementById('confirmModal').classList.
 function hideConfirmModal() { document.getElementById('confirmModal').classList.remove('show'); showToast("취소됨"); }
 
 function queueUpdate(cell, newValue) {
-  // 1. 화면에 값 표시 및 깜빡임 효과 (기존과 동일)
+  // 1. 화면에 값 표시
   cell.innerHTML = formatValueToHtml(newValue);
+
+  // 2. [수정됨] 깜빡임 효과 실행 및 자동 제거
   cell.classList.remove('flash-success'); 
-  void cell.offsetWidth; 
+  void cell.offsetWidth; // 리플로우 강제 (애니메이션 리셋용)
   cell.classList.add('flash-success');
 
-  // 2. 좌표 및 키 생성
+  // ★ 0.5초 뒤에 애니메이션 클래스를 지워서 원래 배경색이 나오도록 함
+  setTimeout(() => {
+    cell.classList.remove('flash-success');
+  }, 500);
+
+  // 3. 좌표 및 키 생성
   const r = cell.getAttribute('data-row'); 
   const c = cell.getAttribute('data-col');
   const key = `${r}-${c}`;
 
-  // 3. [핵심] 원본 데이터(DB에서 가져온 값) 찾기
+  // 4. 원본 데이터 찾기 (DB 값)
   let originalValue = "";
   if (window.currentRenderedData && window.currentRenderedData.students) {
     const student = window.currentRenderedData.students.find(s => s.rowNumber == r);
@@ -357,18 +364,18 @@ function queueUpdate(cell, newValue) {
     }
   }
 
-  // 4. [핵심] 변경 여부 판단 (원래 값과 다를 때만 저장 목록에 추가)
+  // 5. 변경 여부 판단 (원래 값과 비교)
   if (newValue === originalValue) {
-    // 원래 값으로 돌아왔다면 -> 대기 목록에서 제거 & 빨간 테두리 제거
+    // 원래 값으로 돌아왔다면 -> 저장 목록 & 빨간 테두리 제거
     delete pendingChanges[key];
     cell.classList.remove('unsaved-cell');
   } else {
-    // 값이 변경되었다면 -> 대기 목록에 추가 & 빨간 테두리 추가
+    // 값이 변경되었다면 -> 저장 목록 & 빨간 테두리 추가
     pendingChanges[key] = newValue;
     cell.classList.add('unsaved-cell');
   }
 
-  // 5. 버튼 UI 갱신 (저장 버튼 숫자 등)
+  // 6. 버튼 UI 갱신
   updateSaveButtonUI();
 }
 function updateSaveButtonUI() {
@@ -479,5 +486,6 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
+
 
 
