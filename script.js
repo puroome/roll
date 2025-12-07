@@ -71,6 +71,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // [추가] 리사이즈 시 높이 재조정
+  window.addEventListener('resize', adjustRowHeight);
+
   toggleReasonInput();
   fetchInitDataFromFirebase();
 });
@@ -163,7 +166,6 @@ async function executeSave() {
   // 2. 구글 시트 백업용 데이터 준비 (배열로 묶기)
   const backupPayload = keys.map(key => {
     const [r, c] = key.split('-');
-    // pendingChanges에 값이 있으면 그 값, 없으면 이미 렌더링된 값
     const val = pendingChanges[key] !== undefined ? pendingChanges[key] : 
                 window.currentRenderedData.students.find(s=>s.rowNumber==r).attendance.find(a=>a.colIndex==c).value;
     
@@ -302,6 +304,7 @@ function renderTable(data) {
     if (att.day !== currentDay) {
       currentDay = att.day; const info = dayMap[currentDay]; const dayOfWeek = getDayOfWeek(year, data.meta.month, currentDay);
       info.headerId = `date-header-${dateHeaderIdCounter++}`;
+      // [수정] 날짜 헤더 생성 (클릭 이벤트를 위해 클래스 유지)
       html += `<th id="${info.headerId}" colspan="${info.count}" class="header-day ${info.colorClass}">${data.meta.month}월 ${currentDay}일 (${dayOfWeek})</th>`;
     }
   });
@@ -322,7 +325,63 @@ function renderTable(data) {
   });
   html += '</tbody></table>';
   container.innerHTML = html;
-  addDragListeners(); addFocusListeners();
+
+  // [추가] 날짜 클릭 시 저장 기능 연결
+  container.querySelectorAll('.header-day').forEach(header => {
+    header.addEventListener('click', () => {
+        if(Object.keys(pendingChanges).length > 0) {
+            onSaveBtnClick(); // 기존 저장 버튼(모달) 로직 실행
+        } else {
+            showToast("변경사항이 없습니다.");
+        }
+    });
+  });
+
+  addDragListeners(); 
+  addFocusListeners();
+
+  // [추가] 높이 자동 조절
+  adjustRowHeight();
+}
+
+// [추가] 행 높이 자동 조절 함수
+function adjustRowHeight() {
+    const tableContainer = document.getElementById('tableContainer');
+    const table = tableContainer.querySelector('table');
+    if (!table) return;
+
+    const rows = table.querySelectorAll('tbody tr');
+    if (rows.length === 0) return;
+
+    // 1. 사용 가능한 높이 계산
+    const controlsHeight = document.querySelector('.controls').offsetHeight;
+    const theadHeight = table.querySelector('thead').offsetHeight;
+    const windowHeight = window.innerHeight;
+    const availableHeight = windowHeight - controlsHeight - theadHeight - 20;
+
+    // 2. 행 당 적절한 높이 계산
+    const calculatedHeight = availableHeight / rows.length;
+    const defaultHeight = 35; 
+
+    // 3. 로직: 명단이 길어서 짤릴 때만 줄임
+    let finalHeight = defaultHeight;
+    if (calculatedHeight < defaultHeight) {
+        finalHeight = calculatedHeight;
+    }
+
+    // 4. 스타일 적용
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        cells.forEach(td => {
+            td.style.height = `${finalHeight}px`;
+            // 높이가 너무 작아지면 폰트도 줄임
+            if (finalHeight < 25) {
+                td.style.fontSize = '11px';
+            } else {
+                td.style.fontSize = '13px';
+            }
+        });
+    });
 }
 
 function formatValueToHtml(val) {
@@ -487,5 +546,13 @@ function processSingleCell(cell) {
   queueUpdate(cell, val); 
 }
 
+// ==========================================================
+// [Android 연동 인터페이스]
+// ==========================================================
+window.checkUnsavedChanges = function() {
+    return Object.keys(pendingChanges).length > 0;
+};
 
-
+window.forceSave = function() {
+    executeSave();
+};
