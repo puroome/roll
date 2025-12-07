@@ -336,12 +336,39 @@ function showConfirmModal() { document.getElementById('confirmModal').classList.
 function hideConfirmModal() { document.getElementById('confirmModal').classList.remove('show'); showToast("취소됨"); }
 
 function queueUpdate(cell, newValue) {
+  // 1. 화면에 값 표시 및 깜빡임 효과 (기존과 동일)
   cell.innerHTML = formatValueToHtml(newValue);
-  cell.classList.remove('flash-success'); void cell.offsetWidth; cell.classList.add('flash-success');
-  const r = cell.getAttribute('data-row'); const c = cell.getAttribute('data-col');
+  cell.classList.remove('flash-success'); 
+  void cell.offsetWidth; 
+  cell.classList.add('flash-success');
+
+  // 2. 좌표 및 키 생성
+  const r = cell.getAttribute('data-row'); 
+  const c = cell.getAttribute('data-col');
   const key = `${r}-${c}`;
-  pendingChanges[key] = newValue;
-  cell.classList.add('unsaved-cell');
+
+  // 3. [핵심] 원본 데이터(DB에서 가져온 값) 찾기
+  let originalValue = "";
+  if (window.currentRenderedData && window.currentRenderedData.students) {
+    const student = window.currentRenderedData.students.find(s => s.rowNumber == r);
+    if (student) {
+      const att = student.attendance.find(a => a.colIndex == c);
+      if (att) originalValue = att.value;
+    }
+  }
+
+  // 4. [핵심] 변경 여부 판단 (원래 값과 다를 때만 저장 목록에 추가)
+  if (newValue === originalValue) {
+    // 원래 값으로 돌아왔다면 -> 대기 목록에서 제거 & 빨간 테두리 제거
+    delete pendingChanges[key];
+    cell.classList.remove('unsaved-cell');
+  } else {
+    // 값이 변경되었다면 -> 대기 목록에 추가 & 빨간 테두리 추가
+    pendingChanges[key] = newValue;
+    cell.classList.add('unsaved-cell');
+  }
+
+  // 5. 버튼 UI 갱신 (저장 버튼 숫자 등)
   updateSaveButtonUI();
 }
 function updateSaveButtonUI() {
@@ -452,4 +479,5 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
+
 
