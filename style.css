@@ -11,8 +11,8 @@ body {
   margin: 0;
   overflow: hidden; 
 
-  /* [수정] 화면 축소 방지 및 가로 스크롤 제어 */
-  width: 100vw;
+  /* [수정] 너비를 화면(100%)에 고정 -> 표가 더 커도 몸통이 늘어나지 않음 (스크롤 발생) */
+  width: 100%;
   overflow-x: hidden;
   max-width: 100%;
 }
@@ -99,7 +99,7 @@ input[type="text"] {
   touch-action: pan-x pan-y; 
   -webkit-overflow-scrolling: touch;
   
-  /* [수정] 부모 크기에 꽉 차게 설정 */
+  /* [수정] 테이블 감싸는 박스 너비 */
   width: 100%;
 }
 
@@ -225,7 +225,7 @@ th.bg-date-2 { background-color: #ffe0b2; }
 .modal-btn.cancel { background: #eee; }
 .modal-btn.confirm { background: #007bff; color: white; }
 
-/* [추가] 새로고침 방지용 클래스 */
+/* 새로고침 방지용 클래스 */
 .overscroll-y-none {
   overscroll-behavior-y: none;
 }
