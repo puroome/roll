@@ -52,33 +52,44 @@ document.addEventListener('DOMContentLoaded', () => {
   window.executeSave = executeSave;
 
   // --------------------------------------------------------
-  // [수정] 드롭다운 변경 제어 로직 개선
+  // [수정] 드롭다운 변경 제어 로직 (focus 이벤트 활용)
   // --------------------------------------------------------
   const monthSelect = document.getElementById('monthSelect');
   const weekSelect = document.getElementById('weekSelect');
   const classSelect = document.getElementById('classCombinedSelect');
 
-  // 변경 처리 핸들러 (공통 함수)
+  // [중요] 드롭다운을 누르는 순간(변경 전)의 값을 저장합니다.
+  function savePrevValue() {
+    this.dataset.prev = this.value;
+  }
+  
+  // 모바일/PC 호환을 위해 focus 이벤트에 연결
+  monthSelect.addEventListener('focus', savePrevValue);
+  weekSelect.addEventListener('focus', savePrevValue);
+  classSelect.addEventListener('focus', savePrevValue);
+
+  // 변경 처리 핸들러
   function handleSelectChange(element, callback) {
+    const prevValue = element.dataset.prev; // focus때 저장된 값
+    
     // 1. 변경사항이 없는 경우: 즉시 진행
     if (Object.keys(pendingChanges).length === 0) {
-      element.dataset.prev = element.value; // 현재 값을 '이전 값'으로 확정
+      element.dataset.prev = element.value; // 새로운 값을 현재 값으로 갱신
       callback();
       return;
     }
 
     // 2. 변경사항이 있는 경우: 확인 창 표시
     if (confirm("저장하지 않은 변경사항이 있습니다.\n무시하고 이동하시겠습니까? (변경사항은 사라집니다)")) {
-      // [확인] 선택 시:
-      pendingChanges = {};       // 변경사항 초기화
-      updateSaveButtonUI();      // UI 업데이트
-      element.dataset.prev = element.value; // 이동하려는 값을 확정
-      callback();                // 데이터 로드 진행
+      // [확인] 선택 시: 데이터 초기화 후 이동
+      pendingChanges = {};       
+      updateSaveButtonUI();      
+      element.dataset.prev = element.value; 
+      callback();                
     } else {
-      // [취소] 선택 시:
-      // 값을 이전에 저장해둔 값(prev)으로 되돌림
-      if (element.dataset.prev) {
-        element.value = element.dataset.prev;
+      // [취소] 선택 시: 값을 이전 값으로 강제 복구
+      if (prevValue !== undefined) {
+        element.value = prevValue;
       }
     }
   }
@@ -127,16 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchInitDataFromFirebase();
 });
 
-// [신규] 드롭다운의 현재 상태를 '이전 값'으로 강제 동기화하는 함수
-// 초기 로드나 데이터 렌더링 직후에 호출하여 기준점을 잡습니다.
-function syncDropdownState() {
-  const selects = ['monthSelect', 'weekSelect', 'classCombinedSelect'];
-  selects.forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.dataset.prev = el.value;
-  });
-}
-
 // ==========================================================
 // [통신 함수]
 // ==========================================================
@@ -182,10 +183,12 @@ async function loadStudents() {
     if (snapshot.exists()) {
       renderTable(snapshot.val());
       updateSaveButtonUI();
-      syncDropdownState(); // [추가] 데이터 로드 성공 시 현재 드롭다운 상태 저장
+      // 데이터 로드 성공 시 현재 드롭다운 상태를 기준점으로 설정
+      document.getElementById('monthSelect').dataset.prev = month;
+      document.getElementById('weekSelect').dataset.prev = week;
+      document.getElementById('classCombinedSelect').dataset.prev = combinedVal;
     } else {
       document.getElementById('tableContainer').innerHTML = '<div style="padding:20px; text-align:center;">데이터 없음</div>';
-      syncDropdownState(); // [추가] 데이터가 없더라도 이동은 했으므로 상태 저장
     }
   } catch (error) {
     console.error(error);
@@ -294,7 +297,6 @@ function initUI(data) {
     const o = Array.from(m.options).find(opt => opt.value == s.month);
     if (o) { m.value = s.month; onMonthChange(true); }
   }
-  syncDropdownState(); // [추가] 초기 UI 세팅 후 드롭다운 상태 저장
 }
 
 function setupYearData(year) {
@@ -326,8 +328,6 @@ function onMonthChange(isRestoring = false) {
      if (s.combinedClass) { const o = Array.from(cSel.options).find(opt => opt.value == s.combinedClass); if (o) { cSel.value = s.combinedClass; loadStudents(); return; } }
   }
   if (weeks && weeks.length === 1) { wSel.value = weeks[0]; if(cSel.value) loadStudents(); saveState(); }
-  
-  syncDropdownState(); // [추가] 월 변경 등으로 주가 바뀌었으므로 상태 저장
 }
 
 // ----------------------------------------------------------------
