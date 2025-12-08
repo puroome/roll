@@ -322,9 +322,21 @@ function onMonthChange(isRestoring = false) {
 
 function toggleReasonInput() {
   const radios = document.getElementsByName('attType');
-  let selected = ""; for (const r of radios) if (r.checked) selected = r.value;
+  let selected = ""; 
+  for (const r of radios) if (r.checked) selected = r.value;
+  
   const input = document.getElementById('reasonInput');
-  if (selected === "△" || selected === "○") { input.disabled = false; } else { input.disabled = true; input.value = ""; }
+  
+  // [수정 포인트] 라디오 버튼 변경(또는 초기화) 시 입력값 항상 초기화
+  input.value = "";  // <--- 여기가 사유를 지우는 핵심 코드입니다.
+
+  if (selected === "△" || selected === "○") { 
+    input.disabled = false; 
+  } else { 
+    input.disabled = true; 
+    // 위에서 이미 지웠으므로 여기선 따로 안 지워도 되지만 안전상 냅둠
+    input.value = ""; 
+  }
 }
 
 function getDayOfWeek(year, month, day) { const days = ['일', '월', '화', '수', '목', '금', '토']; const d = new Date(year, month - 1, day); return days[d.getDay()]; }
@@ -558,5 +570,6 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
+
 
 
