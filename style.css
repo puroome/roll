@@ -2,7 +2,7 @@
 
 /* 전체 레이아웃 */
 body { 
-  font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; 
+  font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', sans-serif !important;
   padding: 5px; 
   background-color: #f8f9fa; 
   display: flex; flex-direction: column; 
@@ -240,3 +240,4 @@ th.bg-date-2 { background-color: #ffe0b2; }
 .overscroll-y-none {
   overscroll-behavior-y: none;
 }
+
