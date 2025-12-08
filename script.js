@@ -22,6 +22,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+// 백업용 구글 스크립트 URL (기존 유지)
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGOrVUl3r1fRjDrPXnG7uycNL0547aOrSdTiXLbG2ggooANum2hX4NFFg/exec";
 
 // ==========================================================
@@ -234,7 +235,7 @@ async function executeSave() {
         })
         .catch(err => {
             console.error("시트 통신 실패", err);
-            showToast("⚠️ 시트 백업 실패 (인터넷 확인)");
+            // showToast("⚠️ 시트 백업 실패 (인터넷 확인)"); 
         });
     }
 
@@ -362,8 +363,8 @@ function renderTable(data) {
     html += '<tr>';
     html += `<td>${std.no}</td>`;
     
-    // [수정] 이름을 클릭하면 요약 모달 호출
-    html += `<td class="col-name" onclick="showStudentSummary('${std.rowNumber}')">${std.name}</td>`;
+    // [수정] 식별을 위해 std.no도 같이 넘깁니다. (번호가 고유하다고 가정)
+    html += `<td class="col-name" onclick="showStudentSummary('${std.no}', '${std.name}')">${std.name}</td>`;
     
     std.attendance.forEach(att => {
         const colorClass = dayMap[att.day].colorClass;
@@ -561,49 +562,117 @@ function processSingleCell(cell) {
 }
 
 // ==========================================================
-// [추가] 학생별 월간 출결 요약 팝업 로직
+// [추가] 학생별 "월간 전체" 출결 요약 팝업 로직
 // ==========================================================
 
-// 1. 팝업 열기 및 데이터 계산
-window.showStudentSummary = function(rowNumber) {
-  if (!window.currentRenderedData || !window.currentRenderedData.students) return;
+// 기호 -> 텍스트 매핑 함수
+function convertSymbolToText(symbol) {
+  if (symbol === '△') return '인정';
+  if (symbol === '○') return '병';
+  if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
+  return symbol; // 그 외는 그대로
+}
 
-  const student = window.currentRenderedData.students.find(s => s.rowNumber == rowNumber);
-  if (!student) return;
-
+// 1. 팝업 열기 및 전체 데이터 로드
+window.showStudentSummary = async function(studentNo, studentName) {
   const month = document.getElementById('monthSelect').value;
-  const title = `${student.name} (${month}월 출결)`;
+  const year = CURRENT_YEAR;
+  const combinedVal = document.getElementById('classCombinedSelect').value;
   
-  // 날짜별로 데이터 묶기
+  if (!month || !combinedVal) return;
+
+  const parts = combinedVal.split('-');
+  const grade = parts[0];
+  const cls = parts[1];
+
+  // 1. 모달 띄우기 (로딩 상태)
+  const title = `${studentName} (${month}월 전체 출결)`;
+  document.getElementById('studentModalTitle').innerText = title;
+  document.getElementById('studentModalBody').innerHTML = "<div style='text-align:center; padding:30px; color:#888;'>전체 데이터를 불러오는 중...</div>";
+  document.getElementById('studentModal').classList.add('show');
+
+  try {
+    // 2. 해당 월의 '모든 주차' 정보 가져오기
+    // globalData에 주차 정보가 있다고 가정 (setupYearData 참조)
+    const weeks = globalData[year].weeks[month]; // ["1", "2", "3", "4", "5"]
+    
+    if (!weeks || weeks.length === 0) {
+       document.getElementById('studentModalBody').innerHTML = "<div style='text-align:center; padding:20px;'>데이터가 없습니다.</div>";
+       return;
+    }
+
+    // 3. 모든 주차의 데이터를 병렬로 Fetch
+    const promises = weeks.map(w => {
+        const path = `attendance/${year}/${month}/${w}/${grade}-${cls}`;
+        return get(child(ref(db), path));
+    });
+
+    const snapshots = await Promise.all(promises);
+
+    // 4. 데이터 합치기
+    let allAttendance = [];
+
+    snapshots.forEach(snapshot => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.val();
+        // 해당 주차 데이터에서 이 학생(번호 기준) 찾기
+        const student = data.students.find(s => s.no == studentNo); // 번호로 비교 (문자열/숫자 주의)
+        if (student && student.attendance) {
+            allAttendance = allAttendance.concat(student.attendance);
+        }
+    });
+
+    // 5. 날짜순 정렬 (Day 기준)
+    allAttendance.sort((a, b) => Number(a.day) - Number(b.day) || Number(a.period) - Number(b.period));
+
+    // 6. 결과 렌더링
+    renderStudentMonthlySummary(allAttendance);
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('studentModalBody').innerHTML = `<div style='text-align:center; color:red; padding:20px;'>오류 발생: ${err.message}</div>`;
+  }
+};
+
+// 2. 데이터 분석 및 HTML 생성 (기호 -> 텍스트 변환 적용)
+function renderStudentMonthlySummary(attendanceList) {
+  // 날짜별 그룹핑
   const dayGroups = {};
-  student.attendance.forEach(att => {
+  attendanceList.forEach(att => {
     if (!dayGroups[att.day]) dayGroups[att.day] = [];
     dayGroups[att.day].push(att);
   });
 
   let contentHtml = "";
   const days = Object.keys(dayGroups).sort((a, b) => Number(a) - Number(b));
+  let hasData = false;
 
   days.forEach(day => {
     const records = dayGroups[day];
+    // 값이 있는 교시만 필터링
     const absents = records.filter(r => r.value && r.value.trim() !== "");
     
-    if (absents.length === 0) return;
+    if (absents.length === 0) return; // 결석/지각 등이 없으면 패스
+    hasData = true;
 
+    // 해당 날짜의 '모든' 교시 개수와 '결석한' 교시 개수가 같은지 확인 (전교시 결석 여부)
     const isFullDay = (absents.length === records.length);
+    
+    // 모든 결석 사유가 동일한지 체크
     const firstVal = absents[0].value;
     const isAllSame = absents.every(r => r.value === firstVal);
 
-    contentHtml += `<div style="margin-bottom: 8px; font-size:14px;">• ${day}일 : `;
+    contentHtml += `<div style="margin-bottom: 8px; font-size:15px; padding-bottom:5px; border-bottom:1px dashed #eee;">• <b>${day}일</b> : `;
 
     if (isFullDay && isAllSame) {
-      // [케이스 1] 전교시 동일 사유 결석 -> 교시 생략 + "결석" 붙이기
-      const { type, reason } = parseValue(firstVal);
-      contentHtml += `<span style="font-weight:bold; color:#d63384;">${type}결석</span>`;
+      // [케이스 1] 전교시 동일 사유 결석 -> "인정결석" 등으로 표기
+      const { typeText, reason } = parseValueWithText(firstVal);
+      contentHtml += `<span style="font-weight:bold; color:#d63384;">${typeText}결석</span>`;
       if (reason) contentHtml += `, ${reason}`;
       
     } else {
-      // [케이스 2] 부분 결석 또는 사유가 섞인 경우
+      // [케이스 2] 부분 결석
+      // 사유별로 다시 묶기
       const reasonGroups = {}; 
       absents.forEach(a => {
         if(!reasonGroups[a.value]) reasonGroups[a.value] = [];
@@ -612,9 +681,10 @@ window.showStudentSummary = function(rowNumber) {
 
       const parts = [];
       for (const [val, periods] of Object.entries(reasonGroups)) {
-        const { type, reason } = parseValue(val);
+        const { typeText, reason } = parseValueWithText(val);
         const periodStr = periods.join('/');
-        let text = `${periodStr} (<span style="font-weight:bold;">${type}</span>`;
+        
+        let text = `${periodStr}교시 (<span style="font-weight:bold;">${typeText}</span>`;
         if (reason) text += `, ${reason}`;
         text += `)`;
         parts.push(text);
@@ -625,26 +695,35 @@ window.showStudentSummary = function(rowNumber) {
     contentHtml += `</div>`;
   });
 
-  if (contentHtml === "") {
-    contentHtml = "<div style='text-align:center; color:#999; padding:20px;'>특이사항 없음</div>";
+  if (!hasData) {
+    contentHtml = "<div style='text-align:center; color:#999; padding:30px;'>이번 달 특이사항 없음</div>";
   }
 
-  document.getElementById('studentModalTitle').innerText = title;
   document.getElementById('studentModalBody').innerHTML = contentHtml;
-  document.getElementById('studentModal').classList.add('show');
-};
-
-// 2. 값 파싱 헬퍼 함수
-function parseValue(val) {
-  if (!val) return { type: "", reason: "" };
-  const match = val.match(/^([^(]+)\s*(?:\((.+)\))?$/);
-  if (match) {
-    return { type: match[1], reason: match[2] || "" };
-  }
-  return { type: val, reason: "" };
 }
 
-// 3. 팝업 닫기 함수
+// 3. 값 파싱 + 텍스트 변환 헬퍼 (핵심)
+function parseValueWithText(val) {
+  if (!val) return { typeText: "", reason: "" };
+  
+  // 예: "△(두통)" -> symbol="△", note="두통"
+  const match = val.match(/^([^(]+)\s*(?:\((.+)\))?$/);
+  
+  let symbol = val;
+  let reason = "";
+
+  if (match) {
+    symbol = match[1].trim();
+    reason = match[2] ? match[2].trim() : "";
+  }
+
+  // 기호를 텍스트로 변환 (△ -> 인정)
+  const typeText = convertSymbolToText(symbol);
+
+  return { typeText, reason };
+}
+
+// 4. 팝업 닫기 함수
 function closeStudentModal() {
   document.getElementById('studentModal').classList.remove('show');
 }
