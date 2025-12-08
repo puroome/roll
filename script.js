@@ -44,6 +44,7 @@ let lastTouchTime = 0;
 document.addEventListener('DOMContentLoaded', () => {
   window.onSaveBtnClick = onSaveBtnClick;
   window.onMonthChange = onMonthChange;
+  window.getPendingCount = () => Object.keys(pendingChanges).length;
   window.loadStudents = loadStudents;
   window.saveState = saveState;
   window.toggleReasonInput = toggleReasonInput;
@@ -484,3 +485,4 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
+
