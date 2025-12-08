@@ -638,7 +638,7 @@ window.showStudentSummary = async function(studentNo, studentName) {
   const cls = parts[1];
 
   // 1. 모달 띄우기 (로딩 상태)
-  const title = `${studentName} (${month}월 전체 출결)`;
+  const title = `${studentName} (${month}월 출결)`;
   document.getElementById('studentModalTitle').innerText = title;
   document.getElementById('studentModalBody').innerHTML = "<div style='text-align:center; padding:30px; color:#888;'>전체 데이터를 불러오는 중...</div>";
   document.getElementById('studentModal').classList.add('show');
@@ -779,4 +779,5 @@ function parseValueWithText(val) {
 function closeStudentModal() {
   document.getElementById('studentModal').classList.remove('show');
 }
+
 
