@@ -294,22 +294,74 @@ function setupYearData(year) {
   info.grades.forEach(g => { info.classes.forEach(c => { cSel.add(new Option(`${g}-${c}`, `${g}-${c}`)); }); });
 }
 
+// [수정됨] 월 변경 시 주차(Week) 자동 계산 로직 적용
 function onMonthChange(isRestoring = false) {
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
   const wSel = document.getElementById('weekSelect');
   const cSel = document.getElementById('classCombinedSelect');
-  wSel.innerHTML = '<option value="">주</option>'; 
-  if (!month || !globalData[year]) return;
-  const weeks = globalData[year].weeks[month];
   
-  if (weeks) { weeks.forEach(w => wSel.add(new Option(w + '주', w))); }
+  wSel.innerHTML = '<option value="">주</option>'; 
+  
+  if (!month) return; // 월이 선택되지 않았으면 종료
+
+  // [변경] 기존 globalData에서 가져오는 대신 함수로 계산
+  const weeks = calculateWeeks(year, month);
+  
+  weeks.forEach(w => wSel.add(new Option(w + '주', w)));
   
   if (isRestoring) {
      const s = getSavedState();
-     if (s.week) { const o = Array.from(wSel.options).find(opt => opt.value == s.week); if (o) wSel.value = s.week; }
-     if (s.combinedClass) { const o = Array.from(cSel.options).find(opt => opt.value == s.combinedClass); if (o) { cSel.value = s.combinedClass; loadStudents(); return; } }
+     if (s.week) { 
+       const o = Array.from(wSel.options).find(opt => opt.value == s.week); 
+       if (o) wSel.value = s.week; 
+     }
+     if (s.combinedClass) { 
+       const o = Array.from(cSel.options).find(opt => opt.value == s.combinedClass); 
+       if (o) { 
+         cSel.value = s.combinedClass; 
+         loadStudents(); 
+         return; 
+       } 
+     }
   }
+}
+
+// [신규 추가] 요청하신 규칙대로 주차 리스트 생성 함수
+function calculateWeeks(year, month) {
+  const weeks = [];
+  
+  // 해당 월의 1일 날짜 정보
+  const firstDayDate = new Date(year, month - 1, 1);
+  const dayOfWeek = firstDayDate.getDay(); // 0:일, 1:월 ... 6:토
+  
+  // 마지막 날짜 (그 달의 말일)
+  const lastDayDate = new Date(year, month, 0);
+  const lastDate = lastDayDate.getDate();
+
+  let startDate = 1;
+
+  // 규칙 적용: 
+  // 1일이 토(6) -> 다음주 월요일(3일)부터 1주차
+  // 1일이 일(0) -> 다음날 월요일(2일)부터 1주차
+  // 1일이 월~금 -> 1일부터 1주차
+  if (dayOfWeek === 6) {
+    startDate = 3;
+  } else if (dayOfWeek === 0) {
+    startDate = 2;
+  } else {
+    startDate = 1;
+  }
+
+  let currentWeekCount = 1;
+  
+  // 시작일(startDate)부터 7일씩 더해가며 말일을 넘지 않을 때까지 주차 생성
+  for (let d = startDate; d <= lastDate; d += 7) {
+    weeks.push(currentWeekCount.toString());
+    currentWeekCount++;
+  }
+
+  return weeks;
 }
 
 function toggleReasonInput() {
@@ -727,3 +779,4 @@ function parseValueWithText(val) {
 function closeStudentModal() {
   document.getElementById('studentModal').classList.remove('show');
 }
+
