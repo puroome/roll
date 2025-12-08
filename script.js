@@ -372,7 +372,7 @@ function renderTable(data) {
 
   data.students.forEach(std => {
     html += '<tr>';
-    html += `<td style="cursor:pointer;" onclick="window.open('https://docs.google.com/spreadsheets/d/1gEA0AMd-l21L9LPOtQX4YQTHKlBd6FVs2otgyLbLXC8/edit?usp=sharing', '_blank')">${std.no}</td><td class="col-name">${std.name}</td>`;
+    html += `<td>${std.no}</td><td class="col-name">${std.name}</td>`;
     std.attendance.forEach(att => {
         const colorClass = dayMap[att.day].colorClass;
         const displayHtml = formatValueToHtml(att.value);
@@ -570,6 +570,7 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
+
 
 
 
