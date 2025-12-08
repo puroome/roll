@@ -38,6 +38,11 @@ let dragStartCell = null;
 let pendingChanges = {};
 let lastTouchTime = 0;
 
+// [네비게이션 제어 변수] - 추가됨
+let pendingNavigation = null; // 저장 후 실행할 이동 함수
+let activeFilterId = null;    // 현재 변경을 시도한 필터 ID (month, week, class)
+let previousSelectValues = {}; // 필터 변경 취소 시 복구할 이전 값들
+
 // ==========================================================
 // [초기화]
 // ==========================================================
@@ -51,9 +56,40 @@ document.addEventListener('DOMContentLoaded', () => {
   window.hideConfirmModal = hideConfirmModal;
   window.executeSave = executeSave;
 
-  document.getElementById('monthSelect').addEventListener('change', () => { onMonthChange(); saveState(); });
-  document.getElementById('weekSelect').addEventListener('change', () => { loadStudents(); saveState(); });
-  document.getElementById('classCombinedSelect').addEventListener('change', () => { loadStudents(); saveState(); });
+  // 필터 요소들 (월, 주, 반)
+  const filterIds = ['monthSelect', 'weekSelect', 'classCombinedSelect'];
+  
+  filterIds.forEach(id => {
+    const el = document.getElementById(id);
+    
+    // 1. 포커스 시 현재 값 저장 (취소 시 복구용)
+    el.addEventListener('focus', () => {
+      previousSelectValues[id] = el.value;
+    });
+
+    // 2. 변경 시도 시 인터셉트
+    el.addEventListener('change', (e) => {
+      // 원래 실행하려던 로직 정의
+      const runFilterLogic = () => {
+        if (id === 'monthSelect') {
+          onMonthChange(); // 월 변경 시 주(week) 목록 갱신
+        } else {
+          loadStudents(); // 주, 반 변경 시 학생 로드
+        }
+        saveState(); // 상태 저장
+      };
+
+      if (Object.keys(pendingChanges).length > 0) {
+        // 변경사항이 있으면 멈춤 -> 모달 띄움
+        activeFilterId = id;
+        pendingNavigation = runFilterLogic; // "저장 후 이 함수 실행해라" 기록
+        showConfirmModal();
+      } else {
+        // 변경사항 없으면 바로 실행
+        runFilterLogic();
+      }
+    });
+  });
   
   document.getElementById('modalCancelBtn').addEventListener('click', hideConfirmModal);
   document.getElementById('modalConfirmBtn').addEventListener('click', executeSave);
@@ -62,6 +98,8 @@ document.addEventListener('DOMContentLoaded', () => {
   radios.forEach(r => r.addEventListener('change', toggleReasonInput));
 
   document.addEventListener('contextmenu', event => event.preventDefault());
+  
+  // 브라우저 뒤로가기/종료 시 보호
   window.addEventListener('beforeunload', function (e) {
     if (Object.keys(pendingChanges).length > 0) {
       e.preventDefault();
@@ -95,7 +133,9 @@ async function fetchInitDataFromFirebase() {
 }
 
 async function loadStudents() {
+  // 학생을 새로 불러올 때는 기존 변경사항 초기화 (이미 저장했거나, 무시하고 이동한 경우이므로)
   pendingChanges = {};
+  updateSaveButtonUI(); // UI 초기화
   
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
@@ -131,7 +171,15 @@ async function loadStudents() {
 async function executeSave() {
   document.getElementById('confirmModal').classList.remove('show');
   const keys = Object.keys(pendingChanges);
-  if (keys.length === 0) return;
+  if (keys.length === 0) {
+    // 저장할 게 없는데 들어온 경우 (혹시 모를 예외 처리), 이동 로직이 있으면 실행
+    if (pendingNavigation) {
+        pendingNavigation();
+        pendingNavigation = null;
+        activeFilterId = null;
+    }
+    return;
+  }
 
   const nameHeader = document.querySelector('thead th.col-name');
   if(nameHeader) nameHeader.innerText = "...";
@@ -198,9 +246,19 @@ async function executeSave() {
     pendingChanges = {};
     updateSaveButtonUI();
 
+    // [핵심 로직] 저장이 성공하면, 대기 중이던 이동 함수 실행
+    if (pendingNavigation) {
+        pendingNavigation(); // 예: loadStudents() 실행
+        pendingNavigation = null;
+        activeFilterId = null;
+    }
+
   } catch (error) {
     alert("저장 실패: " + error.message);
     updateSaveButtonUI();
+    // 저장 실패 시에는 이동하지 않고 현재 화면 유지
+    pendingNavigation = null;
+    activeFilterId = null;
   }
 }
 
@@ -258,7 +316,8 @@ function onMonthChange(isRestoring = false) {
      if (s.week) { const o = Array.from(wSel.options).find(opt => opt.value == s.week); if (o) wSel.value = s.week; }
      if (s.combinedClass) { const o = Array.from(cSel.options).find(opt => opt.value == s.combinedClass); if (o) { cSel.value = s.combinedClass; loadStudents(); return; } }
   }
-  if (weeks && weeks.length === 1) { wSel.value = weeks[0]; if(cSel.value) loadStudents(); saveState(); }
+  // 월만 바꾸었을 때 자동 로드 방지 (주 선택 유도)
+  // if (weeks && weeks.length === 1) { wSel.value = weeks[0]; if(cSel.value) loadStudents(); saveState(); }
 }
 
 function toggleReasonInput() {
@@ -330,7 +389,22 @@ function formatValueToHtml(val) {
 }
 function showToast(message) { const t = document.getElementById("toast-container"); t.textContent = message; t.className = "show"; setTimeout(()=>{t.className = t.className.replace("show", "");}, 3000); }
 function showConfirmModal() { document.getElementById('confirmModal').classList.add('show'); }
-function hideConfirmModal() { document.getElementById('confirmModal').classList.remove('show'); showToast("취소됨"); }
+
+// [수정] 모달 취소 시: 대기 중이던 이동 취소 & 드롭다운 값 복구
+function hideConfirmModal() { 
+  document.getElementById('confirmModal').classList.remove('show'); 
+  
+  if (activeFilterId && previousSelectValues[activeFilterId] !== undefined) {
+      // 변경하려던 드롭다운 값을 원래 값으로 되돌림
+      document.getElementById(activeFilterId).value = previousSelectValues[activeFilterId];
+  }
+
+  // 대기 중이던 행동 초기화
+  pendingNavigation = null;
+  activeFilterId = null;
+  
+  showToast("취소됨"); 
+}
 
 function queueUpdate(cell, newValue) {
   cell.innerHTML = formatValueToHtml(newValue);
@@ -419,7 +493,6 @@ function onMouseEnter(e) { if(isMultiMode) addToSelection(e.currentTarget); }
 function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
 
 function onTouchStart(e) { 
-  // [핵심 수정] 첫 터치 시 브라우저 진동 잠금을 풀기 위한 '노크' (1ms 진동)
   if(navigator.vibrate) navigator.vibrate(1);
 
   lastTouchTime = Date.now(); 
@@ -485,4 +558,3 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
-
