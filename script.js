@@ -51,57 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
   window.hideConfirmModal = hideConfirmModal;
   window.executeSave = executeSave;
 
-  // --------------------------------------------------------
-  // [핵심 수정] 변경 확인 로직 (뒤로가기와 동일한 원리 적용)
-  // --------------------------------------------------------
-  const monthSelect = document.getElementById('monthSelect');
-  const weekSelect = document.getElementById('weekSelect');
-  const classSelect = document.getElementById('classCombinedSelect');
-
-  // [1] 변경 시도 시 실행되는 공통 함수
-  function handleSelectChange(event, callback) {
-    const element = event.target;
-    const newValue = element.value;
-    const oldValue = element.dataset.prev; // 직전에 저장된 '안전한' 값
-
-    // 저장 안 된 데이터가 없으면 -> 그냥 통과
-    if (Object.keys(pendingChanges).length === 0) {
-      element.dataset.prev = newValue; // 새 값을 안전한 값으로 업데이트
-      callback();
-      return;
-    }
-
-    // 저장 안 된 데이터가 있으면 -> 확인 창
-    if (confirm("저장하지 않은 변경사항이 있습니다.\n무시하고 이동하시겠습니까? (변경사항은 사라집니다)")) {
-      // [확인]: 변경사항 초기화하고 이동
-      pendingChanges = {};
-      updateSaveButtonUI();
-      element.dataset.prev = newValue; // 이동 확정
-      callback();
-    } else {
-      // [취소]: 변경사항 유지하고, 드롭다운만 원래대로 되돌림
-      element.value = oldValue; // UI를 강제로 되돌림
-      // callback 실행 안 함 (이동 중단)
-    }
-  }
-
-  // [2] 이벤트 연결
-  monthSelect.addEventListener('change', (e) => handleSelectChange(e, () => {
-    onMonthChange();
-    saveState();
-  }));
-
-  weekSelect.addEventListener('change', (e) => handleSelectChange(e, () => {
-    loadStudents();
-    saveState();
-  }));
-
-  classSelect.addEventListener('change', (e) => handleSelectChange(e, () => {
-    loadStudents();
-    saveState();
-  }));
-  
-  // --------------------------------------------------------
+  document.getElementById('monthSelect').addEventListener('change', () => { onMonthChange(); saveState(); });
+  document.getElementById('weekSelect').addEventListener('change', () => { loadStudents(); saveState(); });
+  document.getElementById('classCombinedSelect').addEventListener('change', () => { loadStudents(); saveState(); });
   
   document.getElementById('modalCancelBtn').addEventListener('click', hideConfirmModal);
   document.getElementById('modalConfirmBtn').addEventListener('click', executeSave);
@@ -110,28 +62,16 @@ document.addEventListener('DOMContentLoaded', () => {
   radios.forEach(r => r.addEventListener('change', toggleReasonInput));
 
   document.addEventListener('contextmenu', event => event.preventDefault());
-  
-  // [기존] 브라우저 종료/새로고침/뒤로가기 방지 로직
   window.addEventListener('beforeunload', function (e) {
     if (Object.keys(pendingChanges).length > 0) {
       e.preventDefault();
-      e.returnValue = ''; // 크롬 등에서 기본 경고창 표시
+      e.returnValue = '';
     }
   });
 
   toggleReasonInput();
   fetchInitDataFromFirebase();
 });
-
-// [헬퍼 함수] 현재 드롭다운 상태를 '안전한 값'으로 저장
-// 데이터 로드 완료 직후에 호출하여 기준점을 잡습니다.
-function setSafeDropdownValues() {
-  const ids = ['monthSelect', 'weekSelect', 'classCombinedSelect'];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.dataset.prev = el.value;
-  });
-}
 
 // ==========================================================
 // [통신 함수]
@@ -155,8 +95,7 @@ async function fetchInitDataFromFirebase() {
 }
 
 async function loadStudents() {
-  // 로딩 시작 (이 시점은 이미 사용자가 이동을 '확인'했거나 변경사항이 없는 상태임)
-  pendingChanges = {}; // 안전하게 초기화
+  pendingChanges = {};
   
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
@@ -179,11 +118,8 @@ async function loadStudents() {
     if (snapshot.exists()) {
       renderTable(snapshot.val());
       updateSaveButtonUI();
-      setSafeDropdownValues(); // [중요] 로드 성공 시 현재 상태 저장
     } else {
       document.getElementById('tableContainer').innerHTML = '<div style="padding:20px; text-align:center;">데이터 없음</div>';
-      updateSaveButtonUI();
-      setSafeDropdownValues(); // [중요] 데이터 없어도 이동은 했으니 상태 저장
     }
   } catch (error) {
     console.error(error);
@@ -292,7 +228,6 @@ function initUI(data) {
     const o = Array.from(m.options).find(opt => opt.value == s.month);
     if (o) { m.value = s.month; onMonthChange(true); }
   }
-  setSafeDropdownValues(); // [중요] 초기화 완료 후 현재 상태 저장
 }
 
 function setupYearData(year) {
@@ -324,28 +259,13 @@ function onMonthChange(isRestoring = false) {
      if (s.combinedClass) { const o = Array.from(cSel.options).find(opt => opt.value == s.combinedClass); if (o) { cSel.value = s.combinedClass; loadStudents(); return; } }
   }
   if (weeks && weeks.length === 1) { wSel.value = weeks[0]; if(cSel.value) loadStudents(); saveState(); }
-  
-  setSafeDropdownValues(); // [중요] 월/주 구성이 바뀌면 현재 상태 다시 저장
 }
 
-// ----------------------------------------------------------------
-// [유지] 라디오 버튼 변경 시 무조건 사유 텍스트 초기화
-// ----------------------------------------------------------------
 function toggleReasonInput() {
   const radios = document.getElementsByName('attType');
-  let selected = ""; 
-  for (const r of radios) if (r.checked) selected = r.value;
-  
+  let selected = ""; for (const r of radios) if (r.checked) selected = r.value;
   const input = document.getElementById('reasonInput');
-  
-  // 라디오 버튼 변경 시 입력값 즉시 초기화
-  input.value = ""; 
-
-  if (selected === "△" || selected === "○") { 
-    input.disabled = false; 
-  } else { 
-    input.disabled = true; 
-  }
+  if (selected === "△" || selected === "○") { input.disabled = false; } else { input.disabled = true; input.value = ""; }
 }
 
 function getDayOfWeek(year, month, day) { const days = ['일', '월', '화', '수', '목', '금', '토']; const d = new Date(year, month - 1, day); return days[d.getDay()]; }
@@ -499,6 +419,7 @@ function onMouseEnter(e) { if(isMultiMode) addToSelection(e.currentTarget); }
 function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
 
 function onTouchStart(e) { 
+  // [핵심 수정] 첫 터치 시 브라우저 진동 잠금을 풀기 위한 '노크' (1ms 진동)
   if(navigator.vibrate) navigator.vibrate(1);
 
   lastTouchTime = Date.now(); 
@@ -564,3 +485,4 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
+
