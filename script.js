@@ -38,14 +38,6 @@ let dragStartCell = null;
 let pendingChanges = {};
 let lastTouchTime = 0;
 
-// [핵심] 현재 화면에 로딩되어 있는 '확정된' 상태를 저장하는 변수
-// 이동을 취소했을 때 이 값으로 되돌립니다.
-let currentLoadedState = {
-  month: "",
-  week: "",
-  combinedClass: ""
-};
-
 // ==========================================================
 // [초기화]
 // ==========================================================
@@ -60,56 +52,54 @@ document.addEventListener('DOMContentLoaded', () => {
   window.executeSave = executeSave;
 
   // --------------------------------------------------------
-  // [수정] 드롭다운 변경 제어 로직 (상태 기반 복구)
+  // [핵심 수정] 변경 확인 로직 (뒤로가기와 동일한 원리 적용)
   // --------------------------------------------------------
   const monthSelect = document.getElementById('monthSelect');
   const weekSelect = document.getElementById('weekSelect');
   const classSelect = document.getElementById('classCombinedSelect');
 
-  // 공통 변경 핸들러
-  // type: 'month', 'week', 'combinedClass' 중 하나 (currentLoadedState의 키)
-  // loadFunction: 변경 승인 시 실행할 함수
-  function handleSelectChange(element, type, loadFunction) {
-    // 1. 변경사항이 없으면 바로 진행
+  // [1] 변경 시도 시 실행되는 공통 함수
+  function handleSelectChange(event, callback) {
+    const element = event.target;
+    const newValue = element.value;
+    const oldValue = element.dataset.prev; // 직전에 저장된 '안전한' 값
+
+    // 저장 안 된 데이터가 없으면 -> 그냥 통과
     if (Object.keys(pendingChanges).length === 0) {
-      loadFunction();
+      element.dataset.prev = newValue; // 새 값을 안전한 값으로 업데이트
+      callback();
       return;
     }
 
-    // 2. 변경사항이 있으면 확인 창 띄움
+    // 저장 안 된 데이터가 있으면 -> 확인 창
     if (confirm("저장하지 않은 변경사항이 있습니다.\n무시하고 이동하시겠습니까? (변경사항은 사라집니다)")) {
-      // [확인]: 변경사항 버리고 이동
+      // [확인]: 변경사항 초기화하고 이동
       pendingChanges = {};
       updateSaveButtonUI();
-      loadFunction();
+      element.dataset.prev = newValue; // 이동 확정
+      callback();
     } else {
-      // [취소]: 변경된 드롭다운 값을 '마지막으로 로딩된 값'으로 강제 복구
-      // 사용자가 방금 선택한 값은 무시됨
-      element.value = currentLoadedState[type];
+      // [취소]: 변경사항 유지하고, 드롭다운만 원래대로 되돌림
+      element.value = oldValue; // UI를 강제로 되돌림
+      // callback 실행 안 함 (이동 중단)
     }
   }
 
-  // 이벤트 리스너 연결
-  monthSelect.addEventListener('change', function() {
-    handleSelectChange(this, 'month', () => {
-      onMonthChange();
-      saveState();
-    });
-  });
+  // [2] 이벤트 연결
+  monthSelect.addEventListener('change', (e) => handleSelectChange(e, () => {
+    onMonthChange();
+    saveState();
+  }));
 
-  weekSelect.addEventListener('change', function() {
-    handleSelectChange(this, 'week', () => {
-      loadStudents();
-      saveState();
-    });
-  });
+  weekSelect.addEventListener('change', (e) => handleSelectChange(e, () => {
+    loadStudents();
+    saveState();
+  }));
 
-  classSelect.addEventListener('change', function() {
-    handleSelectChange(this, 'combinedClass', () => {
-      loadStudents();
-      saveState();
-    });
-  });
+  classSelect.addEventListener('change', (e) => handleSelectChange(e, () => {
+    loadStudents();
+    saveState();
+  }));
   
   // --------------------------------------------------------
   
@@ -121,17 +111,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('contextmenu', event => event.preventDefault());
   
-  // 브라우저 닫기/새로고침 방지
+  // [기존] 브라우저 종료/새로고침/뒤로가기 방지 로직
   window.addEventListener('beforeunload', function (e) {
     if (Object.keys(pendingChanges).length > 0) {
       e.preventDefault();
-      e.returnValue = '';
+      e.returnValue = ''; // 크롬 등에서 기본 경고창 표시
     }
   });
 
   toggleReasonInput();
   fetchInitDataFromFirebase();
 });
+
+// [헬퍼 함수] 현재 드롭다운 상태를 '안전한 값'으로 저장
+// 데이터 로드 완료 직후에 호출하여 기준점을 잡습니다.
+function setSafeDropdownValues() {
+  const ids = ['monthSelect', 'weekSelect', 'classCombinedSelect'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.dataset.prev = el.value;
+  });
+}
 
 // ==========================================================
 // [통신 함수]
@@ -155,9 +155,8 @@ async function fetchInitDataFromFirebase() {
 }
 
 async function loadStudents() {
-  // 로딩 시작 시에는 pendingChanges를 비우지 않음 (취소 가능성 때문이 아니라, 로딩 성공해야 비움)
-  // 하지만 여기서는 이미 '이동하겠다'고 결정된 상태이므로 초기화해도 무방하나,
-  // 안전하게 데이터가 있을 때만 렌더링하도록 함.
+  // 로딩 시작 (이 시점은 이미 사용자가 이동을 '확인'했거나 변경사항이 없는 상태임)
+  pendingChanges = {}; // 안전하게 초기화
   
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
@@ -178,28 +177,13 @@ async function loadStudents() {
   try {
     const snapshot = await get(child(dbRef, path));
     if (snapshot.exists()) {
-      // 변경사항 초기화 (새 데이터를 불러왔으므로)
-      pendingChanges = {}; 
       renderTable(snapshot.val());
       updateSaveButtonUI();
-
-      // [핵심] 데이터 로드에 성공했으므로, 현재 UI 상태를 '확정 상태'로 저장
-      currentLoadedState = {
-        month: month,
-        week: week,
-        combinedClass: combinedVal
-      };
-
+      setSafeDropdownValues(); // [중요] 로드 성공 시 현재 상태 저장
     } else {
       document.getElementById('tableContainer').innerHTML = '<div style="padding:20px; text-align:center;">데이터 없음</div>';
-      // 데이터가 없더라도, 사용자가 해당 페이지로 이동은 성공한 것이므로 상태 업데이트
-      pendingChanges = {}; 
       updateSaveButtonUI();
-      currentLoadedState = {
-        month: month,
-        week: week,
-        combinedClass: combinedVal
-      };
+      setSafeDropdownValues(); // [중요] 데이터 없어도 이동은 했으니 상태 저장
     }
   } catch (error) {
     console.error(error);
@@ -308,15 +292,7 @@ function initUI(data) {
     const o = Array.from(m.options).find(opt => opt.value == s.month);
     if (o) { m.value = s.month; onMonthChange(true); }
   }
-  
-  // [초기 상태 저장] UI 초기화가 끝나면 현재 상태를 기록
-  const w = document.getElementById('weekSelect');
-  const c = document.getElementById('classCombinedSelect');
-  currentLoadedState = {
-      month: m.value,
-      week: w.value,
-      combinedClass: c.value
-  };
+  setSafeDropdownValues(); // [중요] 초기화 완료 후 현재 상태 저장
 }
 
 function setupYearData(year) {
@@ -349,15 +325,11 @@ function onMonthChange(isRestoring = false) {
   }
   if (weeks && weeks.length === 1) { wSel.value = weeks[0]; if(cSel.value) loadStudents(); saveState(); }
   
-  // [월 변경 시 상태 업데이트] 
-  // loadStudents가 호출되지 않는 경우(반 선택 안됨 등)에도 현재 상태를 갱신해야 함
-  currentLoadedState.month = month;
-  currentLoadedState.week = wSel.value; // 주가 리셋되거나 자동선택된 값
-  currentLoadedState.combinedClass = cSel.value;
+  setSafeDropdownValues(); // [중요] 월/주 구성이 바뀌면 현재 상태 다시 저장
 }
 
 // ----------------------------------------------------------------
-// [수정] 라디오 버튼 변경 시 무조건 사유 텍스트 초기화
+// [유지] 라디오 버튼 변경 시 무조건 사유 텍스트 초기화
 // ----------------------------------------------------------------
 function toggleReasonInput() {
   const radios = document.getElementsByName('attType');
@@ -366,7 +338,7 @@ function toggleReasonInput() {
   
   const input = document.getElementById('reasonInput');
   
-  // [핵심] 결석 종류가 바뀌면 기존 사유는 의미가 없으므로 무조건 지웁니다.
+  // 라디오 버튼 변경 시 입력값 즉시 초기화
   input.value = ""; 
 
   if (selected === "△" || selected === "○") { 
