@@ -323,8 +323,17 @@ function onMonthChange(isRestoring = false) {
 function toggleReasonInput() {
   const radios = document.getElementsByName('attType');
   let selected = ""; for (const r of radios) if (r.checked) selected = r.value;
+  
   const input = document.getElementById('reasonInput');
-  if (selected === "△" || selected === "○") { input.disabled = false; } else { input.disabled = true; input.value = ""; }
+  
+  // [수정됨] 종류를 바꿀 때마다 기존 사유 텍스트를 무조건 지움
+  input.value = "";
+
+  if (selected === "△" || selected === "○") { 
+    input.disabled = false; 
+  } else { 
+    input.disabled = true; 
+  }
 }
 
 function getDayOfWeek(year, month, day) { const days = ['일', '월', '화', '수', '목', '금', '토']; const d = new Date(year, month - 1, day); return days[d.getDay()]; }
@@ -558,3 +567,4 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
+
