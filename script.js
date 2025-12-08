@@ -51,9 +51,66 @@ document.addEventListener('DOMContentLoaded', () => {
   window.hideConfirmModal = hideConfirmModal;
   window.executeSave = executeSave;
 
-  document.getElementById('monthSelect').addEventListener('change', () => { onMonthChange(); saveState(); });
-  document.getElementById('weekSelect').addEventListener('change', () => { loadStudents(); saveState(); });
-  document.getElementById('classCombinedSelect').addEventListener('change', () => { loadStudents(); saveState(); });
+  // --------------------------------------------------------
+  // [수정 1] 드롭다운 변경 시 저장 여부 확인 및 되돌리기 로직
+  // --------------------------------------------------------
+  const monthSelect = document.getElementById('monthSelect');
+  const weekSelect = document.getElementById('weekSelect');
+  const classSelect = document.getElementById('classCombinedSelect');
+
+  // 변경 확인 헬퍼 함수
+  function checkUnsavedAndProceed(element, callback) {
+    // 저장되지 않은 데이터가 있다면
+    if (Object.keys(pendingChanges).length > 0) {
+      if (confirm("저장하지 않은 변경사항이 있습니다.\n무시하고 이동하시겠습니까? (변경사항은 사라집니다)")) {
+        // 확인: 변경사항 초기화 후 진행
+        pendingChanges = {};
+        updateSaveButtonUI();
+        callback();
+        element.dataset.prevValue = element.value; // 현재 값을 확정
+      } else {
+        // 취소: 드롭다운 값을 이전 값으로 되돌림
+        if (element.dataset.prevValue) {
+          element.value = element.dataset.prevValue;
+        }
+      }
+    } else {
+      // 변경사항 없음: 바로 진행
+      callback();
+      element.dataset.prevValue = element.value;
+    }
+  }
+
+  // 포커스 시 현재 값 저장 (취소 시 되돌리기 위해)
+  [monthSelect, weekSelect, classSelect].forEach(el => {
+    el.addEventListener('focus', function() {
+      this.dataset.prevValue = this.value;
+    });
+  });
+
+  // 이벤트 리스너 연결
+  monthSelect.addEventListener('change', function() {
+    checkUnsavedAndProceed(this, () => {
+      onMonthChange();
+      saveState();
+    });
+  });
+
+  weekSelect.addEventListener('change', function() {
+    checkUnsavedAndProceed(this, () => {
+      loadStudents();
+      saveState();
+    });
+  });
+
+  classSelect.addEventListener('change', function() {
+    checkUnsavedAndProceed(this, () => {
+      loadStudents();
+      saveState();
+    });
+  });
+  
+  // --------------------------------------------------------
   
   document.getElementById('modalCancelBtn').addEventListener('click', hideConfirmModal);
   document.getElementById('modalConfirmBtn').addEventListener('click', executeSave);
@@ -62,6 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
   radios.forEach(r => r.addEventListener('change', toggleReasonInput));
 
   document.addEventListener('contextmenu', event => event.preventDefault());
+  
+  // 브라우저 닫기/새로고침 방지
   window.addEventListener('beforeunload', function (e) {
     if (Object.keys(pendingChanges).length > 0) {
       e.preventDefault();
@@ -261,11 +320,26 @@ function onMonthChange(isRestoring = false) {
   if (weeks && weeks.length === 1) { wSel.value = weeks[0]; if(cSel.value) loadStudents(); saveState(); }
 }
 
+// ----------------------------------------------------------------
+// [수정 2] 라디오 버튼 변경 시 무조건 사유 텍스트 초기화
+// ----------------------------------------------------------------
 function toggleReasonInput() {
   const radios = document.getElementsByName('attType');
-  let selected = ""; for (const r of radios) if (r.checked) selected = r.value;
+  let selected = ""; 
+  for (const r of radios) if (r.checked) selected = r.value;
+  
   const input = document.getElementById('reasonInput');
-  if (selected === "△" || selected === "○") { input.disabled = false; } else { input.disabled = true; input.value = ""; }
+  
+  // [수정 포인트] 라디오 버튼 변경(또는 초기화) 시 입력값 항상 초기화
+  input.value = ""; 
+
+  if (selected === "△" || selected === "○") { 
+    input.disabled = false; 
+  } else { 
+    input.disabled = true; 
+    // 위에서 이미 지웠으므로 여기선 따로 안 지워도 되지만 안전상 냅둠
+    input.value = ""; 
+  }
 }
 
 function getDayOfWeek(year, month, day) { const days = ['일', '월', '화', '수', '목', '금', '토']; const d = new Date(year, month - 1, day); return days[d.getDay()]; }
@@ -419,7 +493,7 @@ function onMouseEnter(e) { if(isMultiMode) addToSelection(e.currentTarget); }
 function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
 
 function onTouchStart(e) { 
-  // [핵심 수정] 첫 터치 시 브라우저 진동 잠금을 풀기 위한 '노크' (1ms 진동)
+  // 첫 터치 시 진동 활성화 (모바일)
   if(navigator.vibrate) navigator.vibrate(1);
 
   lastTouchTime = Date.now(); 
@@ -485,4 +559,3 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
-
