@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body class="overscroll-y-none">
   
@@ -25,6 +25,17 @@
       <div class="modal-footer">
         <button id="modalCancelBtn" class="modal-btn cancel">취소</button>
         <button id="modalConfirmBtn" class="modal-btn confirm">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="studentModal" class="modal-overlay">
+    <div class="modal-box">
+      <div id="studentModalTitle" class="modal-title">학생 이름</div>
+      <div id="studentModalBody" class="modal-body" style="text-align: left; max-height: 40vh; overflow-y: auto;">
+        </div>
+      <div class="modal-footer">
+        <button onclick="closeStudentModal()" class="modal-btn confirm">확인</button>
       </div>
     </div>
   </div>
@@ -53,7 +64,7 @@
     <div style="padding:40px; text-align:center; color:#888;">상단에서 조건을 선택해주세요.</div>
   </div>
 
-  <script type="module" src="script.js?v=1"></script>
+  <script type="module" src="script.js?v=2"></script>
 
   <script>
     if ('serviceWorker' in navigator) {
@@ -64,4 +75,3 @@
   </script>
 </body>
 </html>
-
