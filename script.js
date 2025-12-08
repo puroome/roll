@@ -356,7 +356,8 @@ function renderTable(data) {
     dayMap[att.day].count++;
   });
 
-  let html = '<table><thead><tr><th rowspan="2" class="col-no">번호</th><th rowspan="2" class="col-name">이름</th>';
+  // ▼ 이 부분을 복사해서 붙여넣으세요.
+  let html = '<table><thead><tr><th rowspan="2" class="col-no" style="cursor:pointer;" onclick="window.open(\'https://docs.google.com/spreadsheets/d/1gEA0AMd-l21L9LPOtQX4YQTHKlBd6FVs2otgyLbLXC8/edit?usp=sharing\', \'_blank\')">번호</th><th rowspan="2" class="col-name">이름</th>';
   let dateHeaderIdCounter = 0; let currentDay = null;
   
   first.forEach(att => {
@@ -570,6 +571,7 @@ function processSingleCell(cell) {
   } 
   queueUpdate(cell, val); 
 }
+
 
 
 
