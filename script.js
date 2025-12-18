@@ -881,7 +881,7 @@ function toggleDateConfirmation(day) {
   const header = document.getElementById(`date-header-day-${day}`);
   if (header) {
     const originalText = header.getAttribute('data-original-text');
-    header.innerText = originalText + (newStatus ? "(확정)" : "");
+    header.innerText = originalText + (newStatus ? " - 확정" : "");
     if (newStatus) header.classList.add('confirmed-header');
     else header.classList.remove('confirmed-header');
   }
@@ -925,7 +925,7 @@ function renderTable(data) {
       const dayOfWeek = getDayOfWeek(year, data.meta.month, currentDay);
       
       const isConfirmed = data.confirmations[currentDay] === true;
-      const confirmText = isConfirmed ? "(확정)" : "";
+      const confirmText = isConfirmed ? " - 확정" : "";
       const confirmClass = isConfirmed ? "confirmed-header" : "";
       const label = `${data.meta.month}월 ${currentDay}일 (${dayOfWeek})`;
 
@@ -1261,3 +1261,4 @@ function parseValueWithText(val) {
 function closeStudentModal() {
   document.getElementById('studentModal').classList.remove('show');
 }
+
