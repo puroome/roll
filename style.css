@@ -28,7 +28,7 @@ body {
 .home-header h1 { margin: 0; font-size: 24px; color: #333; }
 .home-header p { margin: 10px 0 0; color: #666; font-size: 14px; }
 
-/* [수정 1] PC에서 너무 넓어지지 않도록 최대 너비 설정 및 중앙 정렬 */
+/* PC 대응 */
 .home-content { 
   flex: 1; 
   overflow-y: auto; 
@@ -38,8 +38,8 @@ body {
   gap: 20px; 
   
   width: 100%;
-  max-width: 420px; /* PC 화면 대응: 스마트폰 비율 유지 */
-  margin: 0 auto;   /* 중앙 정렬 */
+  max-width: 420px; 
+  margin: 0 auto;   
   box-sizing: border-box;
 }
 
@@ -51,10 +51,10 @@ body {
 .mode-btn.stats { background-color: #6f42c1; color: white; }
 .mode-btn:active { opacity: 0.8; }
 
-/* [수정 2] 반 버튼 그리드 스타일 변경 (학년별 행 분리) */
+/* 반 버튼 그리드 */
 .grade-row {
   display: flex;
-  justify-content: center; /* 가운데 정렬 */
+  justify-content: center;
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -62,21 +62,20 @@ body {
 
 .class-btn { 
   background-color: #007bff; color: white; border: none; border-radius: 8px; 
-  width: 68px; height: 40px; /* 버튼 크기 1.5배로 수정 (45px -> 68px) */
+  width: 68px; height: 40px; 
   font-size: 14px; font-weight: bold; cursor: pointer; 
   display: flex; align-items: center; justify-content: center;
 }
 .class-btn:active { background-color: #0056b3; }
 
-/* 비활성화 버튼 (회색) */
 .class-btn.disabled {
   background-color: #e9ecef;
   color: #adb5bd;
   cursor: default;
-  pointer-events: none; /* 클릭 방지 */
+  pointer-events: none;
 }
 
-/* 컨트롤 박스 (상단 바) */
+/* 컨트롤 박스 */
 .controls { 
   flex-shrink: 0; 
   display: flex; flex-direction: column; 
@@ -97,7 +96,6 @@ body {
   width: 100%;
 }
 
-/* 홈 버튼 (중앙 배치용) */
 .home-center-btn {
   background: transparent;
   border: 1px solid #ddd;
@@ -116,7 +114,6 @@ body {
 
 .group-left, .group-right { display: flex; align-items: center; gap: 4px; }
 
-/* 드롭다운 */
 select { 
   height: 32px; padding: 0; text-align: center; 
   border-radius: 4px; border: 1px solid #ddd; 
@@ -126,14 +123,12 @@ select {
 }
 select:focus { outline: none; border-color: #007bff; }
 
-/* 입력창 */
 input[type="text"] { 
   height: 32px; padding: 0 5px; 
   border-radius: 4px; border: 1px solid #ddd; 
   font-size: 13px; box-sizing: border-box;
 }
 
-/* 라디오 그룹 */
 .radio-group { 
   display: flex; gap: 2px; background: #f1f3f4; padding: 0 4px; 
   border-radius: 16px; height: 32px; align-items: center;
@@ -270,3 +265,66 @@ th.bg-date-2 { background-color: #fff3e0; }
 .stats-student-row:last-child { border-bottom: none; }
 .stats-student-name { font-weight: bold; margin-bottom: 4px; color: #0056b3; }
 .stats-detail { color: #555; font-size: 13px; line-height: 1.5; padding-left: 10px; border-left: 3px solid #ddd; margin-top: 5px; }
+
+/* [추가] 통계 화면 컨트롤 스타일 */
+.date-picker {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 14px;
+  background: white;
+}
+
+.filter-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 5px 0;
+  max-height: 100px; /* 반이 많으면 스크롤 */
+  overflow-y: auto;
+}
+
+/* 필터 태그 (체크박스를 버튼처럼 보이게 함) */
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filter-tag input {
+  display: none; /* 실제 체크박스는 숨김 */
+}
+
+.filter-tag span {
+  padding: 6px 12px;
+  border-radius: 20px;
+  background-color: #f1f3f4;
+  color: #555;
+  font-size: 13px;
+  font-weight: bold;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+/* 체크되었을 때 스타일 */
+.filter-tag input:checked + span {
+  background-color: #e7f1ff;
+  color: #007bff;
+  border-color: #007bff;
+}
+
+.action-btn-full {
+  width: 100%;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.action-btn-full:active { background-color: #0056b3; }
