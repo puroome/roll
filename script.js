@@ -368,7 +368,10 @@ async function runStatsSearch() {
     filterStartDate = d;
     filterEndDate = d;
     targetMonthsToFetch.push({ year: d.getFullYear().toString(), month: (d.getMonth()+1).toString() });
-    displayTitle = `${d.getMonth()+1}월 ${d.getDate()}일 통계`;
+    
+    // [수정] 일별 통계 제목에 요일 추가
+    const dayChar = getDayOfWeek(d.getFullYear(), d.getMonth()+1, d.getDate());
+    displayTitle = `${d.getMonth()+1}월 ${d.getDate()}일(${dayChar}) 통계`;
 
   } else if (mode === 'monthly') {
     const monthStr = document.getElementById('statsMonthInput').value; 
@@ -506,11 +509,16 @@ async function runStatsSearch() {
           if (!aggregated[classKey][s.no]) {
             aggregated[classKey][s.no] = { name: s.name, records: [] };
           }
-          const recordsWithMeta = validRecords.map(r => ({
-              ...r,
-              _fullDateStr: `${res.month}월 ${r.day}일`,
-              _totalPeriods: dayCounts[r.day] || 0 // 총 교시 수 정보를 데이터에 포함
-          }));
+
+          // [수정] 데이터 저장 시 요일 계산하여 추가
+          const recordsWithMeta = validRecords.map(r => {
+              const yoil = getDayOfWeek(res.year, res.month, r.day);
+              return {
+                  ...r,
+                  _fullDateStr: `${res.month}월 ${r.day}일(${yoil})`, // 날짜 옆에 요일 추가
+                  _totalPeriods: dayCounts[r.day] || 0 // 총 교시 수 정보를 데이터에 포함
+              };
+          });
           aggregated[classKey][s.no].records.push(...recordsWithMeta);
         }
       });
