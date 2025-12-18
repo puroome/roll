@@ -461,6 +461,13 @@ async function runStatsSearch() {
 
       students.forEach(s => {
         if (!s.attendance) return;
+
+        // [추가] 해당 학생의 일자별 총 교시 수 계산 (그 날이 몇 교시까지 있는지 파악)
+        const dayCounts = {};
+        s.attendance.forEach(a => {
+            if (!dayCounts[a.day]) dayCounts[a.day] = 0;
+            dayCounts[a.day]++;
+        });
         
         // 날짜 필터링 된 유효 기록(결석 등 값이 있는 것)
         let validRecords = s.attendance.filter(a => a.value && a.value.trim() !== "");
@@ -483,8 +490,7 @@ async function runStatsSearch() {
              const targetDay = filterStartDate.getDate();
              
              // 해당 날짜에 해당하는 모든 데이터(빈 값 포함)를 가져와서 총 교시 수 계산
-             const allDailySlots = s.attendance.filter(a => parseInt(a.day) === targetDay);
-             const totalPeriodsCount = allDailySlots.length; // 예: 7교시 날이면 7, 4교시 날이면 4
+             const totalPeriodsCount = dayCounts[targetDay] || 0; 
 
              // validRecords는 이미 '값이 있는 것'만 필터링 된 상태임.
              // 따라서 (값이 있는 교시 수 === 총 교시 수) 이면 모든 교시가 결석 처리된 것임.
@@ -502,7 +508,8 @@ async function runStatsSearch() {
           }
           const recordsWithMeta = validRecords.map(r => ({
               ...r,
-              _fullDateStr: `${res.month}월 ${r.day}일`
+              _fullDateStr: `${res.month}월 ${r.day}일`,
+              _totalPeriods: dayCounts[r.day] || 0 // 총 교시 수 정보를 데이터에 포함
           }));
           aggregated[classKey][s.no].records.push(...recordsWithMeta);
         }
@@ -602,7 +609,11 @@ function getStudentSummaryText(records) {
 
   dateKeys.forEach(dateStr => {
     const list = dateGroups[dateStr];
-    const isFullDay = (list.length >= 6); 
+    
+    // [수정] 해당 날짜의 총 교시 수(_totalPeriods)와 결석 데이터 수(list.length)가 같은지 비교
+    const totalPeriods = list[0]._totalPeriods || 0;
+    const isFullDay = (totalPeriods > 0 && list.length === totalPeriods);
+    
     const firstVal = list[0].value;
     const isAllSame = list.every(x => x.value === firstVal);
 
