@@ -79,16 +79,31 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btnStatsMode').addEventListener('click', enterStatsMode);
-  document.getElementById('btnBackToHome').addEventListener('click', goHome);
-  document.getElementById('btnBackToHomeStats').addEventListener('click', goHome);
+  
+  // [수정] goHome 직접 호출 대신 history.back() 사용
+  document.getElementById('btnBackToHome').addEventListener('click', () => history.back());
+  document.getElementById('btnBackToHomeStats').addEventListener('click', () => history.back());
+
+  // [추가] 브라우저 뒤로가기(안드로이드 백버튼) 감지
+  window.addEventListener('popstate', () => {
+    // 히스토리가 변경되면 홈으로 이동을 시도
+    goHome(true);
+  });
 
   toggleReasonInput();
   fetchInitDataFromFirebase();
 });
 
-function goHome() {
+// [수정] fromHistory 파라미터 추가하여 백버튼 이벤트 처리
+function goHome(fromHistory = false) {
   if (Object.keys(pendingChanges).length > 0) {
-    if(!confirm("저장하지 않은 데이터가 있습니다. 무시하고 나가시겠습니까?")) return;
+    if(!confirm("저장하지 않은 데이터가 있습니다. 무시하고 나가시겠습니까?")) {
+      // 뒤로가기로 들어왔는데 취소했다면, 다시 히스토리를 채워넣어 현재 화면 상태 유지
+      if(fromHistory) {
+        history.pushState({ view: 'sub' }, '', '');
+      }
+      return;
+    }
     pendingChanges = {};
     updateSaveButtonUI();
   }
@@ -128,40 +143,29 @@ function renderHomeScreenClassButtons() {
 
   const info = globalData[CURRENT_YEAR];
   
-  // [핵심 수정] Firebase 데이터를 가져올 때 무조건 문자열로 변환 (.map(String))
-  // 이렇게 해야 숫자 1과 문자 "1"이 같다고 인식됩니다.
   const existingGrades = (info.grades || []).map(String);
   const existingClasses = (info.classes || []).map(String);
 
-  // 1학년부터 3학년까지 반복
   const targetGrades = ['1', '2', '3'];
-  
-  // 각 학년당 1반부터 2반까지 표시
   const maxClasses = 2; 
 
   targetGrades.forEach(g => {
-    // 학년별 행(Row) 생성
     const rowDiv = document.createElement('div');
     rowDiv.className = 'grade-row';
     
-    // 1반 ~ maxClasses반까지 버튼 생성
     for (let cNum = 1; cNum <= maxClasses; cNum++) {
-      const c = cNum.toString(); // "1", "2"...
+      const c = cNum.toString(); 
       const btn = document.createElement('button');
       
       const label = `${g}-${c}`;
       btn.innerText = label;
 
-      // 데이터 존재 여부 확인
-      // 이제 둘 다 문자열이므로 정확하게 비교됩니다.
       const isActive = existingGrades.includes(g) && existingClasses.includes(c);
 
       if (isActive) {
-        // 활성화: 파란색 버튼, 클릭 이벤트 연결
         btn.className = 'class-btn';
         btn.onclick = () => enterAttendanceMode(g, c);
       } else {
-        // 비활성화: 회색 버튼, 클릭 불가
         btn.className = 'class-btn disabled';
       }
       
@@ -192,6 +196,8 @@ function enterAttendanceMode(grade, cls) {
     else if(wSel.options.length > 1) wSel.selectedIndex = wSel.options.length - 1;
   }
 
+  // [추가] 히스토리 스택 추가
+  history.pushState({ mode: 'attendance' }, '', '');
   switchView('attendanceScreen');
   loadStudents();
 }
@@ -209,6 +215,8 @@ function calculateCurrentWeek(year, month, day) {
 }
 
 async function enterStatsMode() {
+  // [추가] 히스토리 스택 추가
+  history.pushState({ mode: 'stats' }, '', '');
   switchView('statsScreen');
   const container = document.getElementById('statsContainer');
   container.innerHTML = '<div style="padding:40px; text-align:center; color:#888;">데이터를 분석 중입니다...</div>';
@@ -887,4 +895,3 @@ function parseValueWithText(val) {
 function closeStudentModal() {
   document.getElementById('studentModal').classList.remove('show');
 }
-
