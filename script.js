@@ -127,14 +127,16 @@ function renderHomeScreenClassButtons() {
   }
 
   const info = globalData[CURRENT_YEAR];
-  // 실제 데이터에 존재하는 학년과 반 목록
-  const existingGrades = info.grades || [];
-  const existingClasses = info.classes || [];
+  
+  // [핵심 수정] Firebase 데이터를 가져올 때 무조건 문자열로 변환 (.map(String))
+  // 이렇게 해야 숫자 1과 문자 "1"이 같다고 인식됩니다.
+  const existingGrades = (info.grades || []).map(String);
+  const existingClasses = (info.classes || []).map(String);
 
   // 1학년부터 3학년까지 반복
   const targetGrades = ['1', '2', '3'];
   
-  // [수정] 각 학년당 1반부터 2반까지 표시
+  // 각 학년당 1반부터 2반까지 표시
   const maxClasses = 2; 
 
   targetGrades.forEach(g => {
@@ -144,13 +146,14 @@ function renderHomeScreenClassButtons() {
     
     // 1반 ~ maxClasses반까지 버튼 생성
     for (let cNum = 1; cNum <= maxClasses; cNum++) {
-      const c = cNum.toString();
+      const c = cNum.toString(); // "1", "2"...
       const btn = document.createElement('button');
       
       const label = `${g}-${c}`;
       btn.innerText = label;
 
-      // 데이터 존재 여부 확인 (학년도 있고, 반도 있는지 체크)
+      // 데이터 존재 여부 확인
+      // 이제 둘 다 문자열이므로 정확하게 비교됩니다.
       const isActive = existingGrades.includes(g) && existingClasses.includes(c);
 
       if (isActive) {
@@ -884,3 +887,4 @@ function parseValueWithText(val) {
 function closeStudentModal() {
   document.getElementById('studentModal').classList.remove('show');
 }
+
