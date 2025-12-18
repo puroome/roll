@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body class="overscroll-y-none">
   
@@ -94,13 +94,29 @@
         <div style="width:60px;"></div>
       </div>
 
-      <div class="control-row" style="justify-content: center; gap: 10px; background: #f8f9fa; padding: 8px; border-radius: 8px;">
-        <div class="radio-group">
-          <label><input type="radio" name="statsType" value="daily" checked>일별</label>
-          <label><input type="radio" name="statsType" value="monthly">월별</label>
+      <div class="stats-radio-container">
+        <div class="radio-row">
+          <div class="radio-group">
+            <label><input type="radio" name="statsType" value="daily" checked>일별</label>
+            <label><input type="radio" name="statsType" value="monthly">월별</label>
+          </div>
         </div>
-        <input type="date" id="statsDateInput" class="date-picker">
-        <input type="month" id="statsMonthInput" class="date-picker" style="display:none;">
+        <div class="radio-row">
+           <div class="radio-group">
+            <label><input type="radio" name="statsType" value="period">기간 설정</label>
+           </div>
+        </div>
+
+        <div style="width: 100%; display: flex; justify-content: center; margin-top:5px;">
+          <input type="date" id="statsDateInput" class="date-picker">
+          <input type="month" id="statsMonthInput" class="date-picker" style="display:none;">
+          
+          <div id="statsPeriodInput" class="period-group">
+            <input type="date" id="statsStartDate" class="date-picker" style="width: 130px;">
+            <span class="period-separator">~</span>
+            <input type="date" id="statsEndDate" class="date-picker" style="width: 130px;">
+          </div>
+        </div>
       </div>
 
       <div id="statsFilterContainer" class="filter-container">
@@ -116,7 +132,7 @@
     </div>
   </div>
 
-  <script type="module" src="script.js?v=6"></script>
+  <script type="module" src="script.js?v=7"></script>
 
   <script>
     if ('serviceWorker' in navigator) {
@@ -127,5 +143,3 @@
   </script>
 </body>
 </html>
-
-
