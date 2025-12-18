@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body class="overscroll-y-none">
   
@@ -91,18 +91,37 @@
   </div>
 
   <div id="statsScreen" class="view-section">
-    <div class="controls">
-      <div class="control-row">
+    <div class="controls" style="flex-direction: column; height: auto; gap: 10px; padding: 15px;">
+      
+      <div class="control-row" style="margin-bottom: 5px;">
         <button id="btnBackToHomeStats" class="back-btn">🏠 홈으로</button>
-        <h3 style="margin:0; font-size:16px;">이번 달 통계</h3>
-        <div style="width:60px;"></div> </div>
+        <h3 style="margin:0; font-size:16px;">출석 통계</h3>
+        <div style="width:60px;"></div>
+      </div>
+
+      <div class="control-row" style="justify-content: center; gap: 10px; background: #f8f9fa; padding: 8px; border-radius: 8px;">
+        <div class="radio-group">
+          <label><input type="radio" name="statsType" value="daily" checked>일별</label>
+          <label><input type="radio" name="statsType" value="monthly">월별</label>
+        </div>
+        <input type="date" id="statsDateInput" class="date-picker">
+        <input type="month" id="statsMonthInput" class="date-picker" style="display:none;">
+      </div>
+
+      <div id="statsFilterContainer" class="filter-container">
+        <div style="color:#888; font-size:12px;">반 정보를 불러오는 중...</div>
+      </div>
+
+      <button id="btnSearchStats" class="action-btn-full">조회하기</button>
+
     </div>
+
     <div id="statsContainer" class="stats-wrapper">
-      <div style="padding:40px; text-align:center; color:#888;">데이터를 불러오는 중입니다...</div>
+      <div style="padding:40px; text-align:center; color:#888;">조건을 선택하고 [조회하기]를 눌러주세요.</div>
     </div>
   </div>
 
-  <script type="module" src="script.js?v=4"></script>
+  <script type="module" src="script.js?v=5"></script>
 
   <script>
     if ('serviceWorker' in navigator) {
