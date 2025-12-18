@@ -214,39 +214,160 @@ function calculateCurrentWeek(year, month, day) {
   return Math.floor((day - startDate) / 7) + 1;
 }
 
+// ---------------------------------------------------------
+// [수정] 통계 모드 진입 (초기화)
+// ---------------------------------------------------------
 async function enterStatsMode() {
-  // [추가] 히스토리 스택 추가
   history.pushState({ mode: 'stats' }, '', '');
   switchView('statsScreen');
-  const container = document.getElementById('statsContainer');
-  container.innerHTML = '<div style="padding:40px; text-align:center; color:#888;">데이터를 분석 중입니다...</div>';
+  
+  // 1. 이벤트 리스너 연결 (중복 방지)
+  const btnSearch = document.getElementById('btnSearchStats');
+  btnSearch.onclick = runStatsSearch;
 
+  const radios = document.getElementsByName('statsType');
+  radios.forEach(r => r.addEventListener('change', updateStatsInputVisibility));
+
+  // 2. 날짜 초기값 설정 (오늘)
   const today = new Date();
-  const month = (today.getMonth() + 1).toString(); 
-  const year = CURRENT_YEAR;
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
 
-  if (!globalData[year] || !globalData[year].weeks[month]) {
-    container.innerHTML = '<div style="padding:40px; text-align:center;">이번 달 데이터가 없습니다.</div>';
+  document.getElementById('statsDateInput').value = `${yyyy}-${mm}-${dd}`;
+  document.getElementById('statsMonthInput').value = `${yyyy}-${mm}`;
+
+  // 3. 반 선택 필터 생성 (전체 선택 상태로)
+  renderStatsFilters();
+  
+  // 4. 입력창 가시성 업데이트
+  updateStatsInputVisibility();
+}
+
+// [추가] 일별/월별 라디오 버튼에 따라 입력창 전환
+function updateStatsInputVisibility() {
+  const mode = document.querySelector('input[name="statsType"]:checked').value;
+  if (mode === 'daily') {
+    document.getElementById('statsDateInput').style.display = 'block';
+    document.getElementById('statsMonthInput').style.display = 'none';
+  } else {
+    document.getElementById('statsDateInput').style.display = 'none';
+    document.getElementById('statsMonthInput').style.display = 'block';
+  }
+}
+
+// [추가] 반 선택 필터 렌더링 (전체선택 포함)
+function renderStatsFilters() {
+  const container = document.getElementById('statsFilterContainer');
+  container.innerHTML = "";
+
+  // 현재 연도 데이터 확인
+  const year = CURRENT_YEAR;
+  if (!globalData[year]) {
+    container.innerHTML = "데이터 없음";
     return;
   }
 
-  const weeks = globalData[year].weeks[month];
-  const grades = globalData[year].grades;
-  const classes = globalData[year].classes;
-  
-  const allClassKeys = [];
+  const grades = globalData[year].grades || [];
+  const classes = globalData[year].classes || [];
+
+  // 1. 전체 선택 버튼
+  const allWrapper = document.createElement('label');
+  allWrapper.className = 'filter-tag';
+  allWrapper.innerHTML = `<input type="checkbox" id="chkAll" checked><span>전체</span>`;
+  container.appendChild(allWrapper);
+
+  // 2. 각 반별 버튼 생성 (예: 1-1, 1-2, 2-1...)
   grades.forEach(g => {
     classes.forEach(c => {
-      allClassKeys.push(`${g}-${c}`);
+      const label = document.createElement('label');
+      label.className = 'filter-tag';
+      const val = `${g}-${c}`;
+      label.innerHTML = `<input type="checkbox" name="classFilter" value="${val}" checked><span>${val}</span>`;
+      container.appendChild(label);
     });
   });
 
+  // 전체 선택/해제 로직
+  const chkAll = document.getElementById('chkAll');
+  const chkClasses = document.getElementsByName('classFilter');
+
+  chkAll.addEventListener('change', (e) => {
+    chkClasses.forEach(cb => cb.checked = e.target.checked);
+  });
+  
+  // 개별 버튼 클릭 시 '전체' 체크 상태 동기화
+  chkClasses.forEach(cb => {
+    cb.addEventListener('change', () => {
+      const allChecked = Array.from(chkClasses).every(c => c.checked);
+      chkAll.checked = allChecked;
+    });
+  });
+}
+
+// ---------------------------------------------------------
+// [핵심] 통계 조회 실행 함수
+// ---------------------------------------------------------
+async function runStatsSearch() {
+  const container = document.getElementById('statsContainer');
+  container.innerHTML = '<div style="padding:40px; text-align:center; color:#888;">데이터 분석 중...</div>';
+
+  // 1. 선택된 필터 확인
+  const selectedCheckboxes = document.querySelectorAll('input[name="classFilter"]:checked');
+  if (selectedCheckboxes.length === 0) {
+    container.innerHTML = '<div style="padding:40px; text-align:center; color:red;">선택된 반이 없습니다.</div>';
+    return;
+  }
+  const targetClassKeys = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+  // 2. 날짜/모드 확인
+  const mode = document.querySelector('input[name="statsType"]:checked').value; // 'daily' or 'monthly'
+  let targetYear = CURRENT_YEAR;
+  let targetMonth = "";
+  let targetWeek = "";     // 일별 모드일 때 사용
+  let specificDay = "";    // 일별 모드일 때 사용 (예: 15)
+  let targetWeeks = [];    // 월별 모드일 때 사용
+
+  if (mode === 'daily') {
+    const dateStr = document.getElementById('statsDateInput').value; // yyyy-mm-dd
+    if(!dateStr) return;
+    const dateObj = new Date(dateStr);
+    targetYear = dateObj.getFullYear().toString();
+    targetMonth = (dateObj.getMonth() + 1).toString();
+    specificDay = dateObj.getDate().toString();
+    
+    // 해당 날짜가 몇 주차인지 계산
+    targetWeek = calculateCurrentWeek(targetYear, targetMonth, parseInt(specificDay)).toString();
+    if(targetWeek === "0") {
+        container.innerHTML = '<div style="padding:40px; text-align:center;">선택한 날짜의 주차 정보를 찾을 수 없습니다.</div>';
+        return;
+    }
+    targetWeeks = [targetWeek]; // 일별이라도 로직 통일을 위해 배열로 처리
+
+  } else {
+    // Monthly
+    const monthStr = document.getElementById('statsMonthInput').value; // yyyy-mm
+    if(!monthStr) return;
+    const parts = monthStr.split('-');
+    targetYear = parts[0];
+    targetMonth = parseInt(parts[1]).toString(); // "05" -> "5"
+
+    // 해당 월의 모든 주차 가져오기 (globalData에서 조회)
+    if (globalData[targetYear] && globalData[targetYear].weeks[targetMonth]) {
+      targetWeeks = globalData[targetYear].weeks[targetMonth];
+    } else {
+      container.innerHTML = '<div style="padding:40px; text-align:center;">해당 월의 데이터가 없습니다.</div>';
+      return;
+    }
+  }
+
+  // 3. Firebase 데이터 가져오기 (병렬 처리)
   const promises = [];
-  allClassKeys.forEach(classKey => {
-    weeks.forEach(w => {
-      const path = `attendance/${year}/${month}/${w}/${classKey}`;
+  targetClassKeys.forEach(classKey => {
+    targetWeeks.forEach(w => {
+      const path = `attendance/${targetYear}/${targetMonth}/${w}/${classKey}`;
       promises.push(get(child(ref(db), path)).then(snap => ({ 
-        key: classKey, 
+        classKey: classKey, 
         week: w, 
         val: snap.exists() ? snap.val() : null 
       })));
@@ -255,51 +376,72 @@ async function enterStatsMode() {
 
   try {
     const results = await Promise.all(promises);
-    const aggregated = {};
+    
+    // 4. 데이터 집계
+    const aggregated = {}; // { "1-1": { "1번": {name, records:[]} } }
 
     results.forEach(res => {
-      if (!res.val) return;
-      const classKey = res.key;
-      const students = res.val.students;
+      if (!res.val || !res.val.students) return;
       
+      const classKey = res.classKey;
+      const students = res.val.students;
+
       if (!aggregated[classKey]) aggregated[classKey] = {};
 
       students.forEach(s => {
         if (!s.attendance) return;
-        const absents = s.attendance.filter(a => a.value && a.value.trim() !== "");
-        if (absents.length > 0) {
+        
+        // 필터링: 일별 모드면 특정 날짜(day)만, 월별이면 전체
+        let validRecords = s.attendance.filter(a => a.value && a.value.trim() !== "");
+        
+        if (mode === 'daily') {
+          validRecords = validRecords.filter(a => a.day == specificDay);
+        }
+
+        if (validRecords.length > 0) {
           if (!aggregated[classKey][s.no]) {
             aggregated[classKey][s.no] = { name: s.name, records: [] };
           }
-          aggregated[classKey][s.no].records.push(...absents);
+          aggregated[classKey][s.no].records.push(...validRecords);
         }
       });
     });
 
-    renderStatsUI(aggregated, allClassKeys, month);
+    // 5. 결과 화면 렌더링
+    renderStatsResult(aggregated, targetClassKeys, mode, specificDay, targetMonth);
 
   } catch (e) {
     console.error(e);
-    container.innerHTML = `<div style="text-align:center; color:red;">오류 발생: ${e.message}</div>`;
+    container.innerHTML = `<div style="text-align:center; color:red;">오류: ${e.message}</div>`;
   }
 }
 
-function renderStatsUI(aggregatedData, sortedClassKeys, month) {
+// [추가] 통계 결과 렌더링 함수
+function renderStatsResult(aggregatedData, sortedClassKeys, mode, day, month) {
   const container = document.getElementById('statsContainer');
   let html = "";
   let hasAnyData = false;
+  
+  // 제목 표시
+  const titleText = (mode === 'daily') 
+    ? `${month}월 ${day}일 통계` 
+    : `${month}월 전체 통계`;
+
+  html += `<div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#555;">[ ${titleText} ]</div>`;
 
   sortedClassKeys.forEach(classKey => {
     const studentsMap = aggregatedData[classKey];
     if (!studentsMap || Object.keys(studentsMap).length === 0) return;
 
     hasAnyData = true;
-    html += `<div class="stats-class-block"><div class="stats-class-header">${classKey}반 (${month}월 특이사항)</div>`;
+    html += `<div class="stats-class-block"><div class="stats-class-header">${classKey}반</div>`;
 
+    // 번호순 정렬
     const sortedStudentNos = Object.keys(studentsMap).sort((a,b) => Number(a) - Number(b));
     
     sortedStudentNos.forEach(sNo => {
       const sData = studentsMap[sNo];
+      // 날짜/교시순 정렬
       sData.records.sort((a,b) => Number(a.day) - Number(b.day) || Number(a.period) - Number(b.period));
       
       const summary = getStudentSummaryText(sData.records);
@@ -314,7 +456,7 @@ function renderStatsUI(aggregatedData, sortedClassKeys, month) {
   });
 
   if (!hasAnyData) {
-    html = `<div style="padding:40px; text-align:center; color:#888;">이번 달(${month}월) 특이사항이 없습니다.</div>`;
+    html += `<div style="padding:20px; text-align:center; color:#888;">해당 기간에 특이사항(결석 등)이 없습니다.</div>`;
   }
   container.innerHTML = html;
 }
