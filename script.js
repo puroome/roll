@@ -273,36 +273,21 @@ function renderStatsFilters() {
   const grades = globalData[year].grades || [];
   const classes = globalData[year].classes || [];
 
-  // 1. [전체] 버튼을 위한 행 (Row) 생성
-  const allRow = document.createElement('div');
-  // width 100%로 설정하여 한 줄을 다 차지하게 함 -> 자연스럽게 줄바꿈 효과
-  allRow.style.cssText = "width: 100%; text-align: center; margin-bottom: 8px;";
-
   const allWrapper = document.createElement('label');
   allWrapper.className = 'filter-tag';
   allWrapper.innerHTML = `<input type="checkbox" id="chkAll" checked><span>전체</span>`;
-  
-  allRow.appendChild(allWrapper);
-  container.appendChild(allRow);
+  container.appendChild(allWrapper);
 
-  // 2. [학년별] 버튼을 위한 행 생성 (학년마다 줄바꿈)
   grades.forEach(g => {
-    const gradeRow = document.createElement('div');
-    // Flex를 사용하여 내부 버튼들은 가로로 정렬하되, gradeRow 자체는 한 줄을 차지함
-    gradeRow.style.cssText = "width: 100%; display: flex; justify-content: center; gap: 6px; margin-bottom: 5px;";
-
     classes.forEach(c => {
       const label = document.createElement('label');
       label.className = 'filter-tag';
       const val = `${g}-${c}`;
       label.innerHTML = `<input type="checkbox" name="classFilter" value="${val}" checked><span>${val}</span>`;
-      gradeRow.appendChild(label);
+      container.appendChild(label);
     });
-    
-    container.appendChild(gradeRow);
   });
 
-  // 3. 이벤트 리스너 연결 (기존 로직 동일)
   const chkAll = document.getElementById('chkAll');
   const chkClasses = document.getElementsByName('classFilter');
 
@@ -1078,4 +1063,3 @@ function parseValueWithText(val) {
 function closeStudentModal() {
   document.getElementById('studentModal').classList.remove('show');
 }
-
