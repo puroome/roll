@@ -32,6 +32,9 @@ let previousSelectValues = {};
 
 let currentSelectedClass = null;
 
+// [통계] 전체 학생 수 저장 변수
+let currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
+
 document.addEventListener('DOMContentLoaded', () => {
   window.onSaveBtnClick = onSaveBtnClick;
   window.onMonthChange = onMonthChange;
@@ -42,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.hideConfirmModal = hideConfirmModal;
   window.executeSave = executeSave;
   window.closeStudentModal = closeStudentModal;
+  window.toggleDateConfirmation = toggleDateConfirmation; // 확정 토글
 
   const filterIds = ['monthSelect', 'weekSelect'];
   filterIds.forEach(id => {
@@ -103,6 +107,7 @@ function goHome(fromHistory = false) {
     updateSaveButtonUI();
   }
   switchView('homeScreen');
+  renderHomeScreenClassButtons(); // 돌아올 때 상태 업데이트
 }
 
 function switchView(viewId) {
@@ -126,18 +131,40 @@ async function fetchInitDataFromFirebase() {
   }
 }
 
-// [수정] 홈 화면 반 버튼 (학년별 색상 적용)
-function renderHomeScreenClassButtons() {
+// [수정] 홈 화면 반 버튼 (학년별 색상 및 확정상태 반영)
+async function renderHomeScreenClassButtons() {
   const container = document.getElementById('classButtonContainer');
-  container.innerHTML = "";
+  container.innerHTML = "<div style='grid-column:1/-1; text-align:center; color:#888;'>출결 현황 확인 중...</div>";
   
-  if (!globalData[CURRENT_YEAR]) {
-    container.innerHTML = `<div style="grid-column:1/-1; text-align:center;">${CURRENT_YEAR}년 데이터 없음</div>`;
+  const year = CURRENT_YEAR;
+  if (!globalData[year]) {
+    container.innerHTML = `<div style="grid-column:1/-1; text-align:center;">${year}년 데이터 없음</div>`;
     return;
   }
 
-  const info = globalData[CURRENT_YEAR];
+  // 오늘 날짜 기준 데이터 조회
+  const today = new Date();
+  const month = (today.getMonth() + 1).toString();
+  const day = today.getDate().toString();
+  const week = calculateCurrentWeek(year, month, today.getDate());
   
+  // 이번 주 전체 데이터 가져오기 (각 반의 오늘 확정 상태 확인)
+  let weekData = {};
+  if (week > 0) {
+    try {
+      const path = `attendance/${year}/${month}/${week}`;
+      const snapshot = await get(child(ref(db), path));
+      if (snapshot.exists()) {
+        weekData = snapshot.val();
+      }
+    } catch (e) {
+      console.log("홈 데이터 로드 실패", e);
+    }
+  }
+
+  container.innerHTML = "";
+
+  const info = globalData[year];
   const existingGrades = (info.grades || []).map(String);
   const existingClasses = (info.classes || []).map(String);
 
@@ -159,9 +186,20 @@ function renderHomeScreenClassButtons() {
 
       if (isActive) {
         btn.className = 'class-btn';
-        // 학년별 색상 클래스 추가
-        if (g === '1') btn.classList.add('grade-1');
-        if (g === '3') btn.classList.add('grade-3');
+        
+        // [확정 상태 확인]
+        const classKey = `${g}-${c}`;
+        const classWeekData = weekData[classKey];
+        const isConfirmedToday = classWeekData && classWeekData.confirmations && classWeekData.confirmations[day];
+
+        if (isConfirmedToday) {
+            // 확정된 경우: 학년별 색상
+            if (g === '1') btn.classList.add('grade-1');
+            if (g === '3') btn.classList.add('grade-3');
+        } else {
+            // 미확정(기본): 회색
+            btn.classList.add('gray-status');
+        }
 
         btn.onclick = () => enterAttendanceMode(g, c);
       } else {
@@ -212,7 +250,7 @@ function calculateCurrentWeek(year, month, day) {
   return Math.floor((day - startDate) / 7) + 1;
 }
 
-// [수정] 통계 모드 진입 (기간 날짜 초기화 포함)
+// 통계 모드 진입
 async function enterStatsMode() {
   history.pushState({ mode: 'stats' }, '', '');
   switchView('statsScreen');
@@ -231,7 +269,6 @@ async function enterStatsMode() {
 
   document.getElementById('statsDateInput').value = todayStr;
   document.getElementById('statsMonthInput').value = `${yyyy}-${mm}`;
-  // 기간 설정용 초기값
   document.getElementById('statsStartDate').value = todayStr;
   document.getElementById('statsEndDate').value = todayStr;
 
@@ -239,7 +276,6 @@ async function enterStatsMode() {
   updateStatsInputVisibility();
 }
 
-// [수정] 통계 입력창 표시 제어
 function updateStatsInputVisibility() {
   const mode = document.querySelector('input[name="statsType"]:checked').value;
   
@@ -303,7 +339,7 @@ function renderStatsFilters() {
   });
 }
 
-// [수정] 통계 조회 실행 (기간 검색 로직 통합)
+// [수정] 통계 조회 실행 (전체 학생 수 계산 로직 추가)
 async function runStatsSearch() {
   const container = document.getElementById('statsContainer');
   container.innerHTML = '<div style="padding:40px; text-align:center; color:#888;">데이터 분석 중...</div>';
@@ -368,6 +404,10 @@ async function runStatsSearch() {
     }
   }
   
+  // 전체 학생 수 집계 초기화
+  window.currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
+  const countedClasses = new Set(); 
+
   try {
     const results = [];
     const promises = targetMonthsToFetch.map(async (tm) => {
@@ -380,9 +420,15 @@ async function runStatsSearch() {
         const weeks = Object.keys(monthData);
 
         targetClassKeys.forEach(classKey => {
+            const grade = classKey.split('-')[0];
             weeks.forEach(w => {
                 const val = (monthData[w] && monthData[w][classKey]) ? monthData[w][classKey] : null;
                 if(val) {
+                    // 학생 수 집계 (중복 방지: 해당 반 데이터를 처음 봤을 때)
+                    const uniqueKey = `${tm.month}-${classKey}`; 
+                    // 일별 통계의 경우 정확한 모집단 카운트를 위해 후처리 필요할 수 있으나,
+                    // 일단 발견된 데이터의 학생 수를 더함.
+                    
                     monthResults.push({
                         year: tm.year,
                         month: tm.month,
@@ -398,6 +444,31 @@ async function runStatsSearch() {
 
     const nestedResults = await Promise.all(promises);
     nestedResults.forEach(arr => results.push(...arr));
+
+    // [학생 수 집계] - 일별/기간별 정확도 향상
+    if (mode === 'daily') {
+       // 일별인 경우, 해당 날짜가 포함된 '최신' 데이터 1개씩만 반별로 추려서 학생수 합산
+       const finalClassSet = new Set();
+       results.forEach(res => {
+         if (!finalClassSet.has(res.classKey) && res.val && res.val.students) {
+            const grade = res.classKey.split('-')[0];
+            window.currentStatsTotalCounts[grade] += res.val.students.length;
+            finalClassSet.add(res.classKey);
+         }
+       });
+    } else {
+       // 월별/기간별은 기간 내 변동이 있을 수 있으나, 가장 마지막 데이터 기준으로 하거나
+       // 단순히 합치기엔 중복이 많음. 
+       // 여기서는 '반별'로 최초 1회만 카운트하도록 단순화
+       const finalClassSet = new Set();
+       results.forEach(res => {
+         if (!finalClassSet.has(res.classKey) && res.val && res.val.students) {
+            const grade = res.classKey.split('-')[0];
+            window.currentStatsTotalCounts[grade] += res.val.students.length;
+            finalClassSet.add(res.classKey);
+         }
+       });
+    }
 
     const aggregated = {}; 
 
@@ -451,14 +522,52 @@ async function runStatsSearch() {
   }
 }
 
-// [수정] 결과 렌더링 (월 포함 날짜 표시)
+// [수정] 통계 요약 함수 추가
+function calculateDailySummary(aggregatedData, classKeys) {
+  if (!window.currentStatsTotalCounts) return "";
+
+  const totals = window.currentStatsTotalCounts; 
+  const absents = { '1': 0, '2': 0, '3': 0 };
+
+  classKeys.forEach(key => {
+    const grade = key.split('-')[0];
+    const studentsMap = aggregatedData[key];
+    if (studentsMap) {
+      // 해당 반 결석생 수 (학생 수)
+      absents[grade] = (absents[grade] || 0) + Object.keys(studentsMap).length;
+    }
+  });
+
+  const allTotal = (totals['1']||0) + (totals['2']||0) + (totals['3']||0);
+  const allAbsent = absents['1'] + absents['2'] + absents['3'];
+
+  // 전체 학생수(분모)가 0이면 표시 안함 (데이터 오류 방지)
+  if (allTotal === 0) return "";
+
+  return `
+    <div class="stats-summary-box">
+      <div class="stats-summary-row"><span>1학년</span> <span>${absents['1']} / ${totals['1']||0}</span></div>
+      <div class="stats-summary-row"><span>2학년</span> <span>${absents['2']} / ${totals['2']||0}</span></div>
+      <div class="stats-summary-row"><span>3학년</span> <span>${absents['3']} / ${totals['3']||0}</span></div>
+      <div class="stats-summary-row summary-total"><span>전학년</span> <span>${allAbsent} / ${allTotal}</span></div>
+    </div>
+  `;
+}
+
+// [수정] 결과 렌더링 (요약표 표시 로직 추가)
 function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle) {
   const container = document.getElementById('statsContainer');
   let html = "";
-  let hasAnyData = false;
   
   html += `<div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#555;">[ ${displayTitle} ]</div>`;
 
+  // [추가] 일별 모드일 때 요약표 표시
+  if (mode === 'daily') {
+      const summary = calculateDailySummary(aggregatedData, sortedClassKeys);
+      if(summary) html += summary;
+  }
+
+  let hasAnyData = false;
   sortedClassKeys.forEach(classKey => {
     const studentsMap = aggregatedData[classKey];
     if (!studentsMap || Object.keys(studentsMap).length === 0) return;
@@ -565,17 +674,14 @@ async function loadStudents() {
   }
 }
 
+// [수정] 저장 실행 (확정 데이터 저장 및 더미 키 처리)
 async function executeSave() {
   document.getElementById('confirmModal').classList.remove('show');
   const keys = Object.keys(pendingChanges);
-  if (keys.length === 0) {
-    if (pendingNavigation) {
-        pendingNavigation();
-        pendingNavigation = null;
-        activeFilterId = null;
-    }
-    return;
-  }
+  
+  // 변경사항이 없어도 pendingChanges에 키가 있으면 실행됨
+  // (확정 토글만 한 경우에도 키가 있음)
+  if (keys.length === 0 && !pendingNavigation) return;
 
   const nameHeader = document.querySelector('thead th.col-name');
   if(nameHeader) nameHeader.innerText = "...";
@@ -592,6 +698,9 @@ async function executeSave() {
   const currentTableData = window.currentRenderedData; 
   
   keys.forEach(key => {
+    // 확정 키는 데이터 자체(currentTableData.confirmations)에 이미 반영됨
+    if (key.startsWith('CONFIRM-')) return; 
+
     const [r, c] = key.split('-'); 
     const val = pendingChanges[key];
     const student = currentTableData.students.find(s => s.rowNumber == r);
@@ -601,13 +710,15 @@ async function executeSave() {
     }
   });
 
-  const backupPayload = keys.map(key => {
-    const [r, c] = key.split('-');
-    const val = pendingChanges[key] !== undefined ? pendingChanges[key] : 
+  // 백업 로직: 확정 키는 제외하고 실제 출결 변경사항만 백업
+  const backupPayload = keys
+    .filter(key => !key.startsWith('CONFIRM-'))
+    .map(key => {
+        const [r, c] = key.split('-');
+        const val = pendingChanges[key] !== undefined ? pendingChanges[key] : 
                 window.currentRenderedData.students.find(s=>s.rowNumber==r).attendance.find(a=>a.colIndex==c).value;
-    
-    return { year: year, row: r, col: c, value: val };
-  });
+        return { year: year, row: r, col: c, value: val };
+    });
 
   const path = `attendance/${year}/${month}/${week}/${grade}-${cls}`;
   const updateRef = ref(db, path);
@@ -616,6 +727,7 @@ async function executeSave() {
     await update(updateRef, currentTableData); 
     
     keys.forEach(key => {
+        if (key.startsWith('CONFIRM-')) return;
         const [r, c] = key.split('-');
         const cell = document.querySelector(`.check-cell[data-row="${r}"][data-col="${c}"]`);
         if (cell) cell.classList.remove('unsaved-cell');
@@ -737,8 +849,44 @@ function toggleReasonInput() {
 
 function getDayOfWeek(year, month, day) { const days = ['일', '월', '화', '수', '목', '금', '토']; const d = new Date(year, month - 1, day); return days[d.getDay()]; }
 
+// [신규] 날짜 확정 토글 함수
+function toggleDateConfirmation(day) {
+  if (!window.currentRenderedData) return;
+  
+  if (!window.currentRenderedData.confirmations) {
+    window.currentRenderedData.confirmations = {};
+  }
+  
+  const currentStatus = window.currentRenderedData.confirmations[day] || false;
+  const newStatus = !currentStatus; // 상태 반전
+  
+  window.currentRenderedData.confirmations[day] = newStatus;
+  
+  // UI 즉시 업데이트
+  const header = document.getElementById(`date-header-day-${day}`);
+  if (header) {
+    const originalText = header.getAttribute('data-original-text');
+    header.innerText = originalText + (newStatus ? "(확정)" : "");
+    if (newStatus) header.classList.add('confirmed-header');
+    else header.classList.remove('confirmed-header');
+  }
+  
+  const cells = document.querySelectorAll(`td[data-date-day="${day}"]`);
+  cells.forEach(cell => {
+    if (newStatus) cell.classList.add('confirmed-col');
+    else cell.classList.remove('confirmed-col');
+  });
+
+  // 변경사항이 생겼으므로 저장 버튼 활성화 (가짜 키 사용)
+  pendingChanges[`CONFIRM-${day}`] = newStatus; 
+  updateSaveButtonUI();
+}
+
+// [수정] 테이블 렌더링 (확정 기능 반영)
 function renderTable(data) {
   window.currentRenderedData = data;
+  if (!data.confirmations) data.confirmations = {};
+
   document.getElementById('loading').style.display = 'none';
   const container = document.getElementById('tableContainer');
   const year = CURRENT_YEAR; 
@@ -757,9 +905,24 @@ function renderTable(data) {
   
   first.forEach(att => {
     if (att.day !== currentDay) {
-      currentDay = att.day; const info = dayMap[currentDay]; const dayOfWeek = getDayOfWeek(year, data.meta.month, currentDay);
-      info.headerId = `date-header-${dateHeaderIdCounter++}`;
-      html += `<th id="${info.headerId}" colspan="${info.count}" class="header-day ${info.colorClass}">${data.meta.month}월 ${currentDay}일 (${dayOfWeek})</th>`;
+      currentDay = att.day; 
+      const info = dayMap[currentDay]; 
+      const dayOfWeek = getDayOfWeek(year, data.meta.month, currentDay);
+      
+      const isConfirmed = data.confirmations[currentDay] === true;
+      const confirmText = isConfirmed ? "(확정)" : "";
+      const confirmClass = isConfirmed ? "confirmed-header" : "";
+      const label = `${data.meta.month}월 ${currentDay}일 (${dayOfWeek})`;
+
+      info.headerId = `date-header-day-${currentDay}`;
+      
+      html += `<th id="${info.headerId}" colspan="${info.count}" 
+                class="header-day ${info.colorClass} ${confirmClass}" 
+                data-original-text="${label}"
+                style="cursor:pointer;"
+                onclick="toggleDateConfirmation('${currentDay}')">
+                ${label}${confirmText}
+               </th>`;
     }
   });
   html += '</tr><tr>';
@@ -775,7 +938,15 @@ function renderTable(data) {
         const colorClass = dayMap[att.day].colorClass;
         const displayHtml = formatValueToHtml(att.value);
         const dateHeaderId = dayMap[att.day].headerId; 
-        html += `<td class="check-cell ${colorClass}" data-row="${std.rowNumber}" data-col="${att.colIndex}" data-date-header-id="${dateHeaderId}"> ${displayHtml} </td>`;
+        
+        const isConfirmed = data.confirmations[att.day] === true;
+        const confirmedClass = isConfirmed ? "confirmed-col" : "";
+
+        html += `<td class="check-cell ${colorClass} ${confirmedClass}" 
+                 data-row="${std.rowNumber}" 
+                 data-col="${att.colIndex}" 
+                 data-date-day="${att.day}"
+                 data-date-header-id="${dateHeaderId}"> ${displayHtml} </td>`;
     });
     html += '</tr>';
   });
@@ -912,7 +1083,10 @@ function onTouchEnd(e) {
   if(isMultiMode) finishMultiSelect(); 
 }
 
+// [수정] 다중 선택 시작 (확정된 셀 보호)
 function startMultiSelect(cell) { 
+  if (cell.classList.contains('confirmed-col')) return; // 추가
+
   isMultiMode=true; 
   clearHeaderHighlights(); 
   selectedCells.clear(); 
@@ -921,7 +1095,11 @@ function startMultiSelect(cell) {
   addToSelection(cell); 
 }
 
-function addToSelection(cell) { if(!selectedCells.has(cell)){selectedCells.add(cell); cell.classList.add('multi-selecting'); highlightHeaders(cell);} }
+// [수정] 선택 추가 (확정된 셀 제외)
+function addToSelection(cell) { 
+  if (cell.classList.contains('confirmed-col')) return; // 추가
+  if(!selectedCells.has(cell)){selectedCells.add(cell); cell.classList.add('multi-selecting'); highlightHeaders(cell);} 
+}
 
 function finishMultiSelect() { 
   isMultiMode=false; 
@@ -939,8 +1117,13 @@ function finishMultiSelect() {
   selectedCells.clear(); 
 }
 
+// [수정] 단일 선택 (확정된 셀 보호)
 function processSingleCell(cell) { 
   if(isMultiMode) return; 
+  if (cell.classList.contains('confirmed-col')) {
+      showToast("마감된 날짜입니다.");
+      return;
+  }
   const hasData = cell.querySelector('.mark-symbol') !== null;
   let val = ""; 
   if(!hasData){
