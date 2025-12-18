@@ -24,6 +24,7 @@ body {
 }
 
 /* 홈 화면 스타일 */
+/* .home-header 클래스는 삭제되었으나 만약의 경우를 위해 남겨두거나 삭제 가능 */
 .home-header { padding: 40px 20px 20px; background: white; text-align: center; }
 .home-header h1 { margin: 0; font-size: 24px; color: #333; }
 .home-header p { margin: 10px 0 0; color: #666; font-size: 14px; }
@@ -32,7 +33,7 @@ body {
 .home-content { 
   flex: 1; 
   overflow-y: auto; 
-  padding: 20px; 
+  padding: 40px 20px 20px; /* 상단 여백 조금 추가 */
   display: flex; 
   flex-direction: column; 
   gap: 20px; 
@@ -258,7 +259,20 @@ th.bg-date-2 { background-color: #fff3e0; }
 .overscroll-y-none { overscroll-behavior-y: none; }
 
 /* 통계 화면용 */
-.stats-wrapper { flex: 1; overflow-y: auto; background: white; padding: 20px; }
+/* [수정] 통계 화면에서 리스트가 PC에서 너무 넓어지지 않도록 수정 */
+.stats-wrapper { 
+  flex: 1; 
+  overflow-y: auto; 
+  background: white; 
+  padding: 20px; 
+  
+  /* PC 대응 */
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
 .stats-class-block { margin-bottom: 25px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
 .stats-class-header { background: #f8f9fa; padding: 10px 15px; font-weight: bold; color: #333; border-bottom: 1px solid #eee; }
 .stats-student-row { padding: 12px 15px; border-bottom: 1px solid #f1f1f1; font-size: 14px; }
@@ -266,7 +280,15 @@ th.bg-date-2 { background-color: #fff3e0; }
 .stats-student-name { font-weight: bold; margin-bottom: 4px; color: #0056b3; }
 .stats-detail { color: #555; font-size: 13px; line-height: 1.5; padding-left: 10px; border-left: 3px solid #ddd; margin-top: 5px; }
 
-/* [추가] 통계 화면 컨트롤 스타일 */
+/* 통계 화면 컨트롤 스타일 */
+/* [수정] 통계 화면 컨트롤 박스도 중앙 정렬 */
+#statsScreen .controls {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
 .date-picker {
   border: 1px solid #ddd;
   border-radius: 4px;
