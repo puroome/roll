@@ -187,15 +187,14 @@ async function renderHomeScreenClassButtons() {
       if (isActive) {
         btn.className = 'class-btn';
         
-        // [확정 상태 확인]
+// [확정 상태 확인]
         const classKey = `${g}-${c}`;
         const classWeekData = weekData[classKey];
         const isConfirmedToday = classWeekData && classWeekData.confirmations && classWeekData.confirmations[day];
 
         if (isConfirmedToday) {
-            // 확정된 경우: 학년별 색상
-            if (g === '1') btn.classList.add('grade-1');
-            if (g === '3') btn.classList.add('grade-3');
+            // [수정] 학년 구분 없이 모든 반을 노란색(grade-1) 스타일로 통일
+            btn.classList.add('grade-1');
         } else {
             // 미확정(기본): 회색
             btn.classList.add('gray-status');
@@ -1246,3 +1245,4 @@ function parseValueWithText(val) {
 function closeStudentModal() {
   document.getElementById('studentModal').classList.remove('show');
 }
+
