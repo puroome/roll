@@ -631,7 +631,10 @@ function getStudentSummaryText(records) {
        const parts = [];
        for(const [val, periods] of Object.entries(reasonGroups)){
          const { typeText, reason } = parseValueWithText(val);
-         let sub = `${periods.join(',')}교시 ${typeText}`;
+         
+         // [수정] 전일 결석이 아닐 때 "결과" 텍스트 추가
+         let sub = `${periods.join(',')}교시 ${typeText}결과`;
+         
          if(reason) sub += `(${reason})`;
          parts.push(sub);
        }
