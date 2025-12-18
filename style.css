@@ -81,11 +81,11 @@ body {
 }
 .class-btn.grade-3:active { background-color: #c82333; }
 
-/* [추가] 미확정 상태 (회색) */
+/* [수정] 미확정 상태 (더 옅은 회색) */
 .class-btn.gray-status {
-  background-color: #6c757d !important;
-  color: white !important;
-  border: 1px solid #6c757d;
+  background-color: #d1d5db !important; /* 옅은 회색 */
+  color: #555 !important; /* 배경이 밝으므로 글자는 어둡게 */
+  border: 1px solid #ced4da;
 }
 
 .class-btn.disabled {
@@ -422,3 +422,4 @@ th.bg-date-2 { background-color: #fff3e0; }
   cursor: pointer;
 }
 .action-btn-full:active { background-color: #0056b3; }
+
