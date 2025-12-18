@@ -62,7 +62,7 @@ body {
 
 .class-btn { 
   background-color: #007bff; color: white; border: none; border-radius: 8px; 
-  width: 45px; height: 40px; /* 버튼 크기 고정 */
+  width: 68px; height: 40px; /* 버튼 크기 1.5배로 수정 (45px -> 68px) */
   font-size: 14px; font-weight: bold; cursor: pointer; 
   display: flex; align-items: center; justify-content: center;
 }
