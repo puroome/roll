@@ -68,7 +68,7 @@ body {
 }
 .class-btn:active { background-color: #0056b3; }
 
-/* [수정] 학년별 버튼 색상 */
+/* 학년별 버튼 색상 */
 .class-btn.grade-1 {
   background-color: #ffc107; /* 노란색 */
   color: #000;
@@ -80,6 +80,13 @@ body {
   color: #fff;
 }
 .class-btn.grade-3:active { background-color: #c82333; }
+
+/* [추가] 미확정 상태 (회색) */
+.class-btn.gray-status {
+  background-color: #6c757d !important;
+  color: white !important;
+  border: 1px solid #6c757d;
+}
 
 .class-btn.disabled {
   background-color: #e9ecef;
@@ -220,6 +227,10 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 60px; background-colo
 th.bg-date-1 { background-color: #e3f2fd; }
 th.bg-date-2 { background-color: #fff3e0; }
 
+/* [추가] 확정된 날짜 스타일 */
+.confirmed-header { color: #d63384 !important; }
+.confirmed-col { background-color: #eee !important; pointer-events: none; opacity: 0.6; }
+
 .check-cell { cursor: pointer; line-height: 1.1; position: relative;}
 .multi-selecting { animation: blink-green-selecting 1s infinite ease-in-out !important; z-index: 10; }
 @keyframes blink-green-selecting {
@@ -291,6 +302,30 @@ th.bg-date-2 { background-color: #fff3e0; }
 .stats-student-name { font-weight: bold; margin-bottom: 4px; color: #0056b3; }
 .stats-detail { color: #555; font-size: 13px; line-height: 1.5; padding-left: 10px; border-left: 3px solid #ddd; margin-top: 5px; }
 
+/* [추가] 통계 요약 박스 */
+.stats-summary-box {
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.stats-summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.summary-total {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #ccc;
+  font-weight: bold;
+  color: #007bff; /* 파란색 */
+  font-size: 16px;
+}
+
 /* 통계 화면 컨트롤 스타일 */
 #statsScreen .controls {
   width: 100%;
@@ -308,7 +343,6 @@ th.bg-date-2 { background-color: #fff3e0; }
   background: white;
 }
 
-/* [수정] 통계 입력 레이아웃 추가 */
 .stats-radio-container {
   display: flex;
   flex-direction: column; /* 세로 정렬 */
