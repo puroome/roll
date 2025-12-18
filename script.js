@@ -126,6 +126,7 @@ async function fetchInitDataFromFirebase() {
   }
 }
 
+// [수정] 홈 화면 반 버튼 (학년별 색상 적용)
 function renderHomeScreenClassButtons() {
   const container = document.getElementById('classButtonContainer');
   container.innerHTML = "";
@@ -158,6 +159,10 @@ function renderHomeScreenClassButtons() {
 
       if (isActive) {
         btn.className = 'class-btn';
+        // 학년별 색상 클래스 추가
+        if (g === '1') btn.classList.add('grade-1');
+        if (g === '3') btn.classList.add('grade-3');
+
         btn.onclick = () => enterAttendanceMode(g, c);
       } else {
         btn.className = 'class-btn disabled';
@@ -207,6 +212,7 @@ function calculateCurrentWeek(year, month, day) {
   return Math.floor((day - startDate) / 7) + 1;
 }
 
+// [수정] 통계 모드 진입 (기간 날짜 초기화 포함)
 async function enterStatsMode() {
   history.pushState({ mode: 'stats' }, '', '');
   switchView('statsScreen');
@@ -221,22 +227,36 @@ async function enterStatsMode() {
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
 
-  document.getElementById('statsDateInput').value = `${yyyy}-${mm}-${dd}`;
+  document.getElementById('statsDateInput').value = todayStr;
   document.getElementById('statsMonthInput').value = `${yyyy}-${mm}`;
+  // 기간 설정용 초기값
+  document.getElementById('statsStartDate').value = todayStr;
+  document.getElementById('statsEndDate').value = todayStr;
 
   renderStatsFilters();
   updateStatsInputVisibility();
 }
 
+// [수정] 통계 입력창 표시 제어
 function updateStatsInputVisibility() {
   const mode = document.querySelector('input[name="statsType"]:checked').value;
+  
+  const dailyInput = document.getElementById('statsDateInput');
+  const monthlyInput = document.getElementById('statsMonthInput');
+  const periodInput = document.getElementById('statsPeriodInput');
+
+  dailyInput.style.display = 'none';
+  monthlyInput.style.display = 'none';
+  periodInput.style.display = 'none';
+
   if (mode === 'daily') {
-    document.getElementById('statsDateInput').style.display = 'block';
-    document.getElementById('statsMonthInput').style.display = 'none';
-  } else {
-    document.getElementById('statsDateInput').style.display = 'none';
-    document.getElementById('statsMonthInput').style.display = 'block';
+    dailyInput.style.display = 'block';
+  } else if (mode === 'monthly') {
+    monthlyInput.style.display = 'block';
+  } else if (mode === 'period') {
+    periodInput.style.display = 'flex';
   }
 }
 
@@ -283,11 +303,7 @@ function renderStatsFilters() {
   });
 }
 
-// ---------------------------------------------------------
-// [최적화 적용] 통계 조회 실행 함수
-// 기존: 반별/주별로 개별 호출 (요청 수 많음)
-// 변경: 해당 월(Month) 전체 데이터를 한 번에 호출 후 필터링 (요청 1회)
-// ---------------------------------------------------------
+// [수정] 통계 조회 실행 (기간 검색 로직 통합)
 async function runStatsSearch() {
   const container = document.getElementById('statsContainer');
   container.innerHTML = '<div style="padding:40px; text-align:center; color:#888;">데이터 분석 중...</div>';
@@ -300,65 +316,89 @@ async function runStatsSearch() {
   const targetClassKeys = Array.from(selectedCheckboxes).map(cb => cb.value);
 
   const mode = document.querySelector('input[name="statsType"]:checked').value; 
-  let targetYear = CURRENT_YEAR;
-  let targetMonth = "";
-  let specificDay = "";    
-  let targetWeeks = [];    
+  
+  let targetMonthsToFetch = []; 
+  let filterStartDate = null;
+  let filterEndDate = null;
+  let displayTitle = "";
 
   if (mode === 'daily') {
     const dateStr = document.getElementById('statsDateInput').value; 
     if(!dateStr) return;
-    const dateObj = new Date(dateStr);
-    targetYear = dateObj.getFullYear().toString();
-    targetMonth = (dateObj.getMonth() + 1).toString();
-    specificDay = dateObj.getDate().toString();
-    
-    const targetWeek = calculateCurrentWeek(targetYear, targetMonth, parseInt(specificDay)).toString();
-    if(targetWeek === "0") {
-        container.innerHTML = '<div style="padding:40px; text-align:center;">선택한 날짜의 주차 정보를 찾을 수 없습니다.</div>';
-        return;
-    }
-    targetWeeks = [targetWeek]; 
+    const d = new Date(dateStr);
+    filterStartDate = d;
+    filterEndDate = d;
+    targetMonthsToFetch.push({ year: d.getFullYear().toString(), month: (d.getMonth()+1).toString() });
+    displayTitle = `${d.getMonth()+1}월 ${d.getDate()}일 통계`;
 
-  } else {
+  } else if (mode === 'monthly') {
     const monthStr = document.getElementById('statsMonthInput').value; 
     if(!monthStr) return;
     const parts = monthStr.split('-');
-    targetYear = parts[0];
-    targetMonth = parseInt(parts[1]).toString(); 
+    targetMonthsToFetch.push({ year: parts[0], month: parseInt(parts[1]).toString() });
+    displayTitle = `${parseInt(parts[1])}월 전체 통계`;
 
-    if (globalData[targetYear] && globalData[targetYear].weeks[targetMonth]) {
-      targetWeeks = globalData[targetYear].weeks[targetMonth];
-    } else {
-      container.innerHTML = '<div style="padding:40px; text-align:center;">해당 월의 데이터가 없습니다.</div>';
-      return;
+  } else if (mode === 'period') {
+    const startStr = document.getElementById('statsStartDate').value;
+    const endStr = document.getElementById('statsEndDate').value;
+    if(!startStr || !endStr) {
+        alert("시작일과 종료일을 모두 선택해주세요.");
+        return;
+    }
+    filterStartDate = new Date(startStr);
+    filterEndDate = new Date(endStr);
+    
+    if(filterStartDate > filterEndDate) {
+        alert("종료일이 시작일보다 앞설 수 없습니다.");
+        return;
+    }
+
+    displayTitle = `${startStr} ~ ${endStr} 통계`;
+
+    // 기간 내 포함된 모든 월 계산
+    let curr = new Date(filterStartDate.getFullYear(), filterStartDate.getMonth(), 1);
+    const endLimit = new Date(filterEndDate.getFullYear(), filterEndDate.getMonth(), 1);
+    
+    while(curr <= endLimit) {
+        targetMonthsToFetch.push({ 
+            year: curr.getFullYear().toString(), 
+            month: (curr.getMonth()+1).toString() 
+        });
+        curr.setMonth(curr.getMonth() + 1);
     }
   }
-
-  // [수정된 부분] 해당 월의 전체 데이터를 한 번에 가져옴
-  const path = `attendance/${targetYear}/${targetMonth}`;
   
   try {
-    const snapshot = await get(child(ref(db), path));
-    const monthData = snapshot.exists() ? snapshot.val() : {};
-    
-    // 가져온 월 데이터(monthData)에서 필요한 반/주 데이터만 추출하여 results 배열 구성
-    // 구조: monthData = { "1주": {"1-1": ...}, "2주": ... }
     const results = [];
-    
-    targetClassKeys.forEach(classKey => {
-      targetWeeks.forEach(w => {
-        // 데이터가 있으면 추출, 없으면 null
-        const val = (monthData[w] && monthData[w][classKey]) ? monthData[w][classKey] : null;
-        results.push({ 
-          classKey: classKey, 
-          week: w, 
-          val: val
+    const promises = targetMonthsToFetch.map(async (tm) => {
+        const path = `attendance/${tm.year}/${tm.month}`;
+        const snapshot = await get(child(ref(db), path));
+        if(!snapshot.exists()) return [];
+
+        const monthData = snapshot.val();
+        const monthResults = [];
+        const weeks = Object.keys(monthData);
+
+        targetClassKeys.forEach(classKey => {
+            weeks.forEach(w => {
+                const val = (monthData[w] && monthData[w][classKey]) ? monthData[w][classKey] : null;
+                if(val) {
+                    monthResults.push({
+                        year: tm.year,
+                        month: tm.month,
+                        week: w,
+                        classKey: classKey,
+                        val: val
+                    });
+                }
+            });
         });
-      });
+        return monthResults;
     });
 
-    // 4. 데이터 집계 (기존 로직 유지)
+    const nestedResults = await Promise.all(promises);
+    nestedResults.forEach(arr => results.push(...arr));
+
     const aggregated = {}; 
 
     results.forEach(res => {
@@ -374,20 +414,36 @@ async function runStatsSearch() {
         
         let validRecords = s.attendance.filter(a => a.value && a.value.trim() !== "");
         
-        if (mode === 'daily') {
-          validRecords = validRecords.filter(a => a.day == specificDay);
+        if (mode === 'daily' || mode === 'period') {
+            validRecords = validRecords.filter(a => {
+                const rYear = parseInt(res.year);
+                const rMonth = parseInt(res.month);
+                const rDay = parseInt(a.day);
+                
+                const rDate = new Date(rYear, rMonth - 1, rDay);
+                
+                const fStart = new Date(filterStartDate); fStart.setHours(0,0,0,0);
+                const fEnd = new Date(filterEndDate); fEnd.setHours(0,0,0,0);
+                
+                return rDate >= fStart && rDate <= fEnd;
+            });
         }
 
         if (validRecords.length > 0) {
           if (!aggregated[classKey][s.no]) {
             aggregated[classKey][s.no] = { name: s.name, records: [] };
           }
-          aggregated[classKey][s.no].records.push(...validRecords);
+          // 날짜 정보 보강
+          const recordsWithMeta = validRecords.map(r => ({
+              ...r,
+              _fullDateStr: `${res.month}월 ${r.day}일`
+          }));
+          aggregated[classKey][s.no].records.push(...recordsWithMeta);
         }
       });
     });
 
-    renderStatsResult(aggregated, targetClassKeys, mode, specificDay, targetMonth);
+    renderStatsResult(aggregated, targetClassKeys, mode, displayTitle);
 
   } catch (e) {
     console.error(e);
@@ -395,16 +451,13 @@ async function runStatsSearch() {
   }
 }
 
-function renderStatsResult(aggregatedData, sortedClassKeys, mode, day, month) {
+// [수정] 결과 렌더링 (월 포함 날짜 표시)
+function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle) {
   const container = document.getElementById('statsContainer');
   let html = "";
   let hasAnyData = false;
   
-  const titleText = (mode === 'daily') 
-    ? `${month}월 ${day}일 통계` 
-    : `${month}월 전체 통계`;
-
-  html += `<div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#555;">[ ${titleText} ]</div>`;
+  html += `<div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#555;">[ ${displayTitle} ]</div>`;
 
   sortedClassKeys.forEach(classKey => {
     const studentsMap = aggregatedData[classKey];
@@ -417,8 +470,6 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, day, month) {
     
     sortedStudentNos.forEach(sNo => {
       const sData = studentsMap[sNo];
-      sData.records.sort((a,b) => Number(a.day) - Number(b.day) || Number(a.period) - Number(b.period));
-      
       const summary = getStudentSummaryText(sData.records);
       if(summary) {
         html += `<div class="stats-student-row">
@@ -437,23 +488,23 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, day, month) {
 }
 
 function getStudentSummaryText(records) {
-  const dayGroups = {};
+  const dateGroups = {};
   records.forEach(r => {
-    if(!dayGroups[r.day]) dayGroups[r.day] = [];
-    dayGroups[r.day].push(r);
+    const key = r._fullDateStr || `${r.day}일`;
+    if(!dateGroups[key]) dateGroups[key] = [];
+    dateGroups[key].push(r);
   });
 
   let lines = [];
-  const days = Object.keys(dayGroups).sort((a,b)=>Number(a)-Number(b));
+  const dateKeys = Object.keys(dateGroups); 
 
-  days.forEach(day => {
-    const list = dayGroups[day];
-    const totalPeriods = 7; 
+  dateKeys.forEach(dateStr => {
+    const list = dateGroups[dateStr];
     const isFullDay = (list.length >= 6); 
     const firstVal = list[0].value;
     const isAllSame = list.every(x => x.value === firstVal);
 
-    let text = `<b>${day}일</b>: `;
+    let text = `<b>${dateStr}</b>: `;
     if (isFullDay && isAllSame) {
        const { typeText, reason } = parseValueWithText(firstVal);
        text += `<span style="color:#d63384;">${typeText}결석</span>`;
