@@ -30,6 +30,9 @@ let pendingNavigation = null;
 let activeFilterId = null;
 let previousSelectValues = {}; 
 
+// [변경] 현재 선택된 반 정보 (반 선택 드롭다운 제거 대체)
+let currentSelectedClass = null; // 예: "1-1"
+
 document.addEventListener('DOMContentLoaded', () => {
   window.onSaveBtnClick = onSaveBtnClick;
   window.onMonthChange = onMonthChange;
@@ -41,7 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.executeSave = executeSave;
   window.closeStudentModal = closeStudentModal;
 
-  const filterIds = ['monthSelect', 'weekSelect', 'classCombinedSelect'];
+  // 필터 ID 목록에서 반 선택 제거
+  const filterIds = ['monthSelect', 'weekSelect'];
   filterIds.forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('focus', () => { previousSelectValues[id] = el.value; });
@@ -138,10 +142,14 @@ function renderHomeScreenClassButtons() {
   });
 }
 
+// [변경] 반 진입 시 전역 변수에 반 정보 저장
 function enterAttendanceMode(grade, cls) {
   const today = new Date();
   const currentMonth = (today.getMonth() + 1).toString();
   const currentWeek = calculateCurrentWeek(CURRENT_YEAR, currentMonth, today.getDate());
+
+  // 현재 선택된 반 설정
+  currentSelectedClass = `${grade}-${cls}`;
 
   setupYearData(CURRENT_YEAR);
   
@@ -155,9 +163,6 @@ function enterAttendanceMode(grade, cls) {
     if(weekOpt) wSel.value = currentWeek;
     else if(wSel.options.length > 1) wSel.selectedIndex = wSel.options.length - 1;
   }
-
-  const cSel = document.getElementById('classCombinedSelect');
-  cSel.value = `${grade}-${cls}`;
 
   switchView('attendanceScreen');
   loadStudents();
@@ -321,6 +326,7 @@ function getStudentSummaryText(records) {
   return lines.join('<br>');
 }
 
+// [변경] loadStudents에서 currentSelectedClass 사용
 async function loadStudents() {
   pendingChanges = {};
   updateSaveButtonUI(); 
@@ -328,7 +334,7 @@ async function loadStudents() {
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
   const week = document.getElementById('weekSelect').value;
-  const combinedVal = document.getElementById('classCombinedSelect').value; 
+  const combinedVal = currentSelectedClass; // [수정됨]
 
   if (!year || !month || !week || !combinedVal) return;
 
@@ -356,6 +362,7 @@ async function loadStudents() {
   }
 }
 
+// [변경] executeSave에서 currentSelectedClass 사용
 async function executeSave() {
   document.getElementById('confirmModal').classList.remove('show');
   const keys = Object.keys(pendingChanges);
@@ -374,7 +381,8 @@ async function executeSave() {
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
   const week = document.getElementById('weekSelect').value;
-  const combinedVal = document.getElementById('classCombinedSelect').value;
+  const combinedVal = currentSelectedClass; // [수정됨]
+  
   const parts = combinedVal.split('-');
   const grade = parts[0];
   const cls = parts[1];
@@ -446,11 +454,12 @@ async function executeSave() {
   }
 }
 
+// [변경] saveState에서 currentSelectedClass 사용
 function saveState() { 
   const s = { 
     month: document.getElementById('monthSelect').value, 
     week: document.getElementById('weekSelect').value, 
-    combinedClass: document.getElementById('classCombinedSelect').value 
+    combinedClass: currentSelectedClass // [수정됨]
   }; 
   localStorage.setItem('attendanceState', JSON.stringify(s)); 
 }
@@ -461,23 +470,24 @@ function initUI(data) {
   globalData = data;
 }
 
+// [변경] setupYearData에서 반 선택 관련 로직 제거 (이제 홈에서 버튼으로 선택함)
 function setupYearData(year) {
   const info = globalData[year];
   const mSel = document.getElementById('monthSelect');
-  const cSel = document.getElementById('classCombinedSelect'); 
+  // const cSel = document.getElementById('classCombinedSelect'); // 제거됨
   mSel.innerHTML = '<option value="">월</option>';
-  cSel.innerHTML = '<option value="">반</option>';
+  // cSel.innerHTML = '<option value="">반</option>'; // 제거됨
   document.getElementById('weekSelect').innerHTML = '<option value="">주</option>';
   
   info.months.forEach(m => mSel.add(new Option(m + '월', m))); 
-  info.grades.forEach(g => { info.classes.forEach(c => { cSel.add(new Option(`${g}-${c}`, `${g}-${c}`)); }); });
+  // info.grades.forEach(g => { info.classes.forEach(c => { cSel.add(new Option(`${g}-${c}`, `${g}-${c}`)); }); }); // 제거됨
 }
 
+// [변경] onMonthChange에서 반 관련 로직 제거
 function onMonthChange(isRestoring = false) {
   const year = CURRENT_YEAR;
   const month = document.getElementById('monthSelect').value;
   const wSel = document.getElementById('weekSelect');
-  const cSel = document.getElementById('classCombinedSelect');
   
   wSel.innerHTML = '<option value="">주</option>'; 
   if (!month) return; 
@@ -491,14 +501,7 @@ function onMonthChange(isRestoring = false) {
        const o = Array.from(wSel.options).find(opt => opt.value == s.week); 
        if (o) wSel.value = s.week; 
      }
-     if (s.combinedClass) { 
-       const o = Array.from(cSel.options).find(opt => opt.value == s.combinedClass); 
-       if (o) { 
-         cSel.value = s.combinedClass; 
-         loadStudents(); 
-         return; 
-       } 
-     }
+     // 반 복원 로직은 loadStudents 호출로 대체될 수 있으나, 현재는 홈 진입 시점으로 통일
   }
 }
 
@@ -762,10 +765,12 @@ function convertSymbolToText(symbol) {
   return symbol; 
 }
 
+// [변경] showStudentSummary에서 currentSelectedClass 사용
 window.showStudentSummary = async function(studentNo, studentName) {
   const month = document.getElementById('monthSelect').value;
   const year = CURRENT_YEAR;
-  const combinedVal = document.getElementById('classCombinedSelect').value;
+  const combinedVal = currentSelectedClass; // [수정됨]
+  
   if (!month || !combinedVal) return;
   const parts = combinedVal.split('-');
   const grade = parts[0];
