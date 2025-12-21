@@ -1,6 +1,6 @@
 {
-  "name": "출석부",
-  "short_name": "Roll",
+  "name": "roll",
+  "short_name": "출석부",
   "start_url": "https://puroome.github.io/roll/index.html",
   "display": "standalone",
   "orientation": "portrait",
@@ -19,4 +19,5 @@
       "type": "image/png"
     }
   ]
+
 }
