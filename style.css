@@ -7,11 +7,9 @@ body {
   box-sizing: border-box; user-select: none; margin: 0; overflow: hidden; 
 }
 
-/* 화면 전환 */
 .view-section { display: none; flex-direction: column; height: 100%; width: 100%; }
 .view-section.active { display: flex; }
 
-/* 홈 화면 */
 .home-content { 
   flex: 1; overflow-y: auto; padding: 40px 20px 20px; 
   display: flex; flex-direction: column; gap: 20px; 
@@ -30,22 +28,15 @@ body {
   width: 68px; height: 40px; font-size: 14px; font-weight: bold; cursor: pointer; 
   display: flex; align-items: center; justify-content: center;
 }
-
-/* [중요] 확정된 반 색상 (노랑) */
+/* [중요] 확정(노랑), 미확정(회색) */
 .class-btn.grade-1 { background-color: #ffc107; color: #000; } 
-/* [중요] 미확정 반 색상 (회색) */
 .class-btn.gray-status { background-color: #e9ecef !important; color: #555 !important; }
-
 .class-btn.disabled { background-color: #e9ecef; color: #adb5bd; pointer-events: none; }
 
-/* 컨트롤 박스 */
-.controls { 
-  flex-shrink: 0; display: flex; flex-direction: column; 
-  background: white; padding: 8px 10px; border-bottom: 1px solid #ddd; 
-}
+.controls { flex-shrink: 0; display: flex; flex-direction: column; background: white; padding: 8px 10px; border-bottom: 1px solid #ddd; }
 .control-row { display: flex; align-items: center; justify-content: space-between; gap: 5px; width: 100%; }
 
-/* [디자인 수정] 날짜 선택기 스타일 */
+/* [디자인] 날짜 선택기 */
 .date-control-container {
   position: relative;
   display: flex; align-items: center; justify-content: space-between;
@@ -57,7 +48,7 @@ body {
 .date-text { font-size: 16px; font-weight: bold; color: #333; letter-spacing: 0.5px; }
 .calendar-icon { font-size: 18px; }
 
-/* [핵심] 투명 인풋이 위를 덮음 (z-index:10) */
+/* [핵심] 투명 인풋이 위를 덮음 */
 .full-cover-date {
   position: absolute; left: 0; top: 0; width: 100%; height: 100%;
   opacity: 0; z-index: 10; cursor: pointer;
@@ -72,7 +63,6 @@ body {
 .radio-group input { margin-right: 1px; transform: scale(0.9); }
 #reasonInput { width: 50px; font-size: 12px; text-align: center; height: 32px; border: 1px solid #ddd; border-radius: 4px; }
 
-/* 테이블 */
 .table-wrapper { flex: 1; overflow: auto; background: white; }
 table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 th, td { border: 1px solid #eee; text-align: center; vertical-align: middle; padding: 0; height: 40px; box-sizing: border-box; font-size: 13px; }
@@ -90,7 +80,6 @@ thead th.col-name.save-active { background-color: #198754 !important; color: whi
 .multi-selecting { background-color: rgba(100, 255, 100, 0.2); }
 .flash-success { animation: flash 0.5s; } @keyframes flash { 0% { background: #28a745; } 100% { background: transparent; } }
 
-/* 모달 */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 4000; display: flex; justify-content: center; align-items: center; visibility: hidden; opacity: 0; transition: 0.2s; }
 .modal-overlay.show { visibility: visible; opacity: 1; }
 .modal-box { background: white; padding: 20px; border-radius: 12px; width: 80%; max-width: 300px; text-align: center; }
