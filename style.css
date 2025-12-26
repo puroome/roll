@@ -192,8 +192,8 @@ th, td {
   border: 1px solid #eee; border-left: 0; border-top: 0;
   text-align: center; vertical-align: middle;
   overflow: hidden; white-space: nowrap; 
-  /* [수정] 기본 패딩 0으로 설정하여 군살 제거 */
-  padding: 0; 
+  /* [중요] 기본 패딩 0, 박스 사이즈 고정 */
+  padding: 0 !important;
   box-sizing: border-box; font-size: 13px; 
   width: 45px; min-width: 45px; 
 }
@@ -204,32 +204,35 @@ thead { position: sticky; top: 0; z-index: 100; }
 th { font-weight: bold; background-color: #f8f9fa; color: #444; position: sticky; top: 0; z-index: 50; border-bottom: 1px solid #ccc; }
 thead tr:nth-child(2) th { top: 30px; z-index: 50; }
 
-/* [수정됨] 번호 칸: 30px
-  헤더 "번호" 두 글자, 내용 숫자 2자리에 딱 맞춤.
+/* [수정됨] 번호 칸: 30px 고정 
+  padding: 0 !important 필수
 */
 .col-no, tbody td:first-child {
   position: sticky; left: 0;
   width: 30px !important; 
   min-width: 30px !important; 
-  max-width: 30px !important; /* 강제 고정 */
+  max-width: 30px !important;
   background-color: #fff; border-right: 1px solid #ddd;
   font-size: 11px; z-index: 60; color: #888;
   padding: 0 !important;
+  letter-spacing: -0.5px; /* 자간 조절 */
+  overflow: hidden;
 }
 
-/* [수정됨] 이름 칸: 45px
-  헤더 "이름" 두 글자, 내용 한글 3자리에 딱 맞춤.
-  left 값은 번호칸 너비인 30px로 설정.
+/* [수정됨] 이름 칸: 45px 고정 
+  left: 30px (번호칸 너비만큼)
 */
 .col-name, tbody td:nth-child(2) {
   position: sticky; 
   left: 30px !important; 
   width: 45px !important; 
   min-width: 45px !important; 
-  max-width: 45px !important; /* 강제 고정 */
+  max-width: 45px !important;
   border-right: 2px solid #bbb; 
   font-weight: bold; z-index: 60; font-size: 14px;
   padding: 0 !important;
+  letter-spacing: -1px; /* 3글자 이름을 위해 자간 좁힘 */
+  overflow: hidden;
 }
 
 tbody td:nth-child(2) { background-color: #fff; cursor: pointer; }
@@ -240,13 +243,20 @@ thead th.col-name {
   cursor: pointer; transition: all 0.2s;
   z-index: 150 !important; top: 0; height: 60px; 
   white-space: normal !important; line-height: 1.2;
+  /* 이름 헤더도 여백 제거 */
+  padding: 0 !important; 
+  display: flex !important; align-items: center; justify-content: center;
 }
 
 thead th.col-name.save-active {
   background-color: #198754 !important; color: white;
   box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 }
-thead th.col-no { z-index: 150 !important; top: 0; height: 60px; background-color: #f8f9fa;}
+thead th.col-no { 
+  z-index: 150 !important; top: 0; height: 60px; background-color: #f8f9fa;
+  /* 번호 헤더도 여백 제거 */
+  padding: 0 !important;
+}
 
 .highlight-header { background-color: #dbeafe !important; }
 
