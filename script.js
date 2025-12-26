@@ -1133,7 +1133,7 @@ function calculateDailySummary(fullDayAbsentCounts) {
       <div class="stats-summary-row"><span>1학년</span> <span>${present1} / ${totals['1']||0}</span></div>
       <div class="stats-summary-row"><span>2학년</span> <span>${present2} / ${totals['2']||0}</span></div>
       <div class="stats-summary-row"><span>3학년</span> <span>${present3} / ${totals['3']||0}</span></div>
-      <div class="stats-summary-row summary-total"><span>전학년 출석</span> <span>${allPresent} / ${allTotal}</span></div>
+      <div class="stats-summary-row summary-total"><span>총 출석</span> <span>${allPresent} / ${allTotal}</span></div>
     </div>
   `;
 }
@@ -1206,4 +1206,5 @@ function convertSymbolToText(symbol) {
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
 }
+
 
