@@ -294,7 +294,7 @@ async function loadStudents() {
   }
 }
 
-// [수정] 테이블 렌더링 (하루치 데이터만 필터링)
+// [수정] 테이블 렌더링 (colgroup 추가로 너비 강제 고정)
 function renderTable(data) {
   if (!data.confirmations) data.confirmations = {};
   
@@ -325,9 +325,34 @@ function renderTable(data) {
 
   // 교시 정렬
   dayRecords.sort((a,b) => parseInt(a.period) - parseInt(b.period));
+  
+  // ===============================================
+  // [핵심] 최소 너비 계산 (반응형 대응)
+  // 화면이 아무리 작아도 체크박스 하나당 35px은 확보하도록 설정
+  // ===============================================
+  const FIXED_WIDTH_NO = 30;   // 번호 너비
+  const FIXED_WIDTH_NAME = 55; // 이름 너비
+  const MIN_CELL_WIDTH = 35;   // 출석 칸 최소 너비
+  
+  const totalCols = dayRecords.length;
+  const minTableWidth = FIXED_WIDTH_NO + FIXED_WIDTH_NAME + (totalCols * MIN_CELL_WIDTH);
 
   // 테이블 생성
-  let html = '<table><thead>';
+  // min-width를 적용하여, 화면이 너무 좁으면 가로 스크롤 생성
+  let html = `<table style="min-width: ${minTableWidth}px;">`;
+
+  // [중요] colgroup을 사용하여 너비 강제 할당
+  // 번호, 이름은 고정(width), 나머지는 비율(auto)이지만 min-width 덕분에 찌그러지지 않음
+  html += '<colgroup>';
+  html += `<col style="width: ${FIXED_WIDTH_NO}px;">`;
+  html += `<col style="width: ${FIXED_WIDTH_NAME}px;">`;
+  // 나머지 컬럼은 너비를 지정하지 않음 -> 남은 공간 등분 (table-layout: fixed 특성)
+  for(let i=0; i<totalCols; i++) {
+    html += '<col>'; 
+  }
+  html += '</colgroup>';
+
+  html += '<thead>';
   
   const dayOfWeek = getDayOfWeek(activeDate);
   const dateLabel = `${activeDate.getMonth()+1}/${targetDay}(${dayOfWeek})`;
@@ -1181,3 +1206,4 @@ function convertSymbolToText(symbol) {
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
 }
+
