@@ -17,61 +17,35 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGO
 
 let globalData = {}; 
 const CURRENT_YEAR = new Date().getFullYear().toString();
-
 let isMultiMode = false;
 let selectedCells = new Set();
-let dragStartAction = null;
-let longPressTimer = null;
-let dragStartCell = null;
 let pendingChanges = {};
-let lastTouchTime = 0;
-
-let pendingNavigation = null;
-let currentSelectedClass = null; // "1-1" 등
-let currentActiveDate = new Date(); // 현재 보고 있는 날짜
-
-// [통계] 전체 학생 수 저장 변수
-let currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
-
-// [캐시] 현재 로드된 월의 데이터 (불필요한 네트워크 요청 방지)
+let currentSelectedClass = null;
+let currentActiveDate = new Date();
 let loadedMonthData = null; 
-let loadedMonthKey = ""; // "2025-12" 형태
+let loadedMonthKey = "";
 
 document.addEventListener('DOMContentLoaded', () => {
   window.onSaveBtnClick = onSaveBtnClick;
-  window.getPendingCount = () => Object.keys(pendingChanges).length;
-  window.loadStudents = loadStudents;
-  window.saveState = saveState;
-  window.toggleReasonInput = toggleReasonInput;
-  window.hideConfirmModal = hideConfirmModal;
-  window.executeSave = executeSave;
   window.closeStudentModal = closeStudentModal;
-
-  // 날짜 변경 리스너
+  window.executeSave = executeSave;
+  window.hideConfirmModal = hideConfirmModal;
+  
   const dateInput = document.getElementById('dateInput');
   dateInput.addEventListener('change', (e) => {
+    if(!e.target.value) return;
     const newDate = new Date(e.target.value);
     
-    const runChange = () => {
-      currentActiveDate = newDate;
-      updateDateLabel(newDate);
-      loadStudents();
-      saveState();
-    };
-
     if (Object.keys(pendingChanges).length > 0) {
-      pendingNavigation = runChange;
-      showConfirmModal();
-      // 날짜 선택기를 원래대로 돌려놓기 위해 리로드 필요할 수 있으나 UI상 단순 표기라 생략
-    } else {
-      runChange();
+      if(!confirm("저장하지 않은 데이터가 있습니다. 이동하시겠습니까?")) {
+        updateDateLabel(currentActiveDate);
+        return;
+      }
     }
-  });
-
-  // 날짜 라벨 클릭 시 날짜 선택기 열기
-  const dateLabel = document.getElementById('dateDisplayLabel');
-  dateLabel.addEventListener('click', () => {
-    dateInput.showPicker(); // 브라우저 네이티브 피커
+    
+    currentActiveDate = newDate;
+    updateDateLabel(newDate);
+    loadStudents();
   });
 
   document.getElementById('modalCancelBtn').addEventListener('click', hideConfirmModal);
@@ -81,27 +55,15 @@ document.addEventListener('DOMContentLoaded', () => {
   radios.forEach(r => r.addEventListener('change', toggleReasonInput));
 
   document.addEventListener('contextmenu', event => event.preventDefault());
-  
-  window.addEventListener('beforeunload', function (e) {
-    if (Object.keys(pendingChanges).length > 0) {
-      e.preventDefault();
-      e.returnValue = '';
-    }
-  });
+  window.addEventListener('beforeunload', (e) => { if(Object.keys(pendingChanges).length > 0) e.returnValue = ''; });
 
   document.getElementById('btnStatsMode').addEventListener('click', enterStatsMode);
-  
-  document.getElementById('btnBackToHome').addEventListener('click', () => history.back());
-  document.getElementById('btnBackToHomeStats').addEventListener('click', () => history.back());
-
-  window.addEventListener('popstate', () => {
-    goHome(true);
-  });
+  document.getElementById('btnBackToHome').addEventListener('click', () => goHome());
+  document.getElementById('btnBackToHomeStats').addEventListener('click', () => goHome());
 
   toggleReasonInput();
   fetchInitDataFromFirebase();
   
-  // 오늘 날짜로 초기화
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -113,91 +75,95 @@ document.addEventListener('DOMContentLoaded', () => {
 function updateDateLabel(date) {
   const mm = date.getMonth() + 1;
   const dd = date.getDate();
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  const dayStr = days[date.getDay()];
-  // [요청] [12-29 📅] 형태
-  const label = document.getElementById('dateDisplayLabel');
-  // 월, 일 2자리 맞춤 (선택사항, 요청은 12-29)
   const padMM = String(mm).padStart(2, '0');
   const padDD = String(dd).padStart(2, '0');
-  label.innerText = `${padMM}-${padDD} 📅`;
+  document.getElementById('dateDisplayLabel').innerText = `${padMM}-${padDD}`;
+  const yyyy = date.getFullYear();
+  document.getElementById('dateInput').value = `${yyyy}-${padMM}-${padDD}`;
 }
 
-function goHome(fromHistory = false) {
+function goHome() {
   if (Object.keys(pendingChanges).length > 0) {
-    if(!confirm("저장하지 않은 데이터가 있습니다. 무시하고 나가시겠습니까?")) {
-      if(fromHistory) history.pushState({ view: 'sub' }, '', '');
-      return;
-    }
+    if(!confirm("저장하지 않은 내용이 있습니다. 무시하고 홈으로 가시겠습니까?")) return;
     pendingChanges = {};
     updateSaveButtonUI();
   }
-  switchView('homeScreen');
-  renderHomeScreenClassButtons(); 
-}
-
-function switchView(viewId) {
   document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-  document.getElementById(viewId).classList.add('active');
+  document.getElementById('homeScreen').classList.add('active');
+  renderHomeScreenClassButtons();
 }
 
 async function fetchInitDataFromFirebase() {
-  const dbRef = ref(db);
   try {
-    const snapshot = await get(child(dbRef, `metadata`));
+    const snapshot = await get(child(ref(db), `metadata`));
     if (snapshot.exists()) {
       globalData = snapshot.val();
       renderHomeScreenClassButtons();
-    } else {
-      console.log("메타데이터 없음");
     }
-  } catch (error) {
-    console.error("데이터 로드 실패:", error);
-  }
+  } catch (error) { console.error(error); }
 }
 
-// [수정] 홈 화면 반 버튼 (월 단위 확정 로직으로 변경 필요하나, 일별 확정은 데이터 구조상 복잡하여 단순화)
+// [핵심] 반 버튼 색상 로직: 오늘 확정 여부 체크
 async function renderHomeScreenClassButtons() {
   const container = document.getElementById('classButtonContainer');
-  container.innerHTML = "<div style='grid-column:1/-1; text-align:center; color:#888;'>출결 현황 확인 중...</div>";
-  
   const year = CURRENT_YEAR;
-  if (!globalData[year]) {
-    container.innerHTML = `<div style="grid-column:1/-1; text-align:center;">${year}년 데이터 없음</div>`;
-    return;
-  }
+  if (!globalData[year]) { container.innerHTML = "데이터 없음"; return; }
+
+  // [중요] 오늘 날짜 확정 상태 조회를 위해 병렬 요청
+  const today = new Date();
+  const mm = (today.getMonth()+1).toString();
+  const dd = today.getDate().toString();
+  
+  const existingGrades = (globalData[year].grades || []).map(String);
+  const existingClasses = (globalData[year].classes || []).map(String);
+  
+  container.innerHTML = "출결 확인 중...";
+  
+  // 모든 반의 오늘 상태 조회
+  const statusMap = {}; // {'1-1': true/false}
+  
+  // DB 부하를 줄이기 위해 루프 돌며 요청 (실제 환경에선 상위 노드 fetch 고려)
+  const promises = [];
+  const classKeys = [];
+
+  ['1', '2', '3'].forEach(g => {
+     ['1', '2'].forEach(c => { // 예시: 1, 2반만 있다고 가정하거나 globalData 루프 사용
+        if(existingGrades.includes(g) && existingClasses.includes(c)) {
+           const key = `${g}-${c}`;
+           classKeys.push(key);
+           const path = `attendance/${year}/${mm}/${key}/confirmations/${dd}`;
+           promises.push(get(child(ref(db), path)));
+        }
+     });
+  });
+
+  const snapshots = await Promise.all(promises);
+  snapshots.forEach((snap, idx) => {
+     statusMap[classKeys[idx]] = snap.exists() && snap.val() === true;
+  });
 
   container.innerHTML = "";
-  const info = globalData[year];
-  const existingGrades = (info.grades || []).map(String);
-  const existingClasses = (info.classes || []).map(String);
-
-  // 학년/반 렌더링 (단순화: 미확정/확정 색상 로직은 일별 단위에서 전체 조회 부하가 크므로, 기본 색상으로 우선 표시)
-  // *고도화 시: 오늘 날짜 데이터만 미리 fetch해서 색상 적용 가능
   
-  const targetGrades = ['1', '2', '3'];
-  const maxClasses = 2; 
-
-  targetGrades.forEach(g => {
+  ['1', '2', '3'].forEach(g => {
     const rowDiv = document.createElement('div');
     rowDiv.className = 'grade-row';
-    
-    for (let cNum = 1; cNum <= maxClasses; cNum++) {
+    for (let cNum = 1; cNum <= 2; cNum++) {
       const c = cNum.toString(); 
       const btn = document.createElement('button');
+      const key = `${g}-${c}`;
+      btn.innerText = key;
       
-      const label = `${g}-${c}`;
-      btn.innerText = label;
-
-      const isActive = existingGrades.includes(g) && existingClasses.includes(c);
-
-      if (isActive) {
-        btn.className = 'class-btn grade-1'; // 기본 색상 (노랑 등)
+      if (existingGrades.includes(g) && existingClasses.includes(c)) {
+        // [조건] 확정되었으면 노랑(grade-1), 아니면 회색(gray-status)
+        if(statusMap[key]) {
+             btn.className = 'class-btn grade-1'; 
+        } else {
+             btn.className = 'class-btn gray-status';
+        }
         btn.onclick = () => enterAttendanceMode(g, c);
       } else {
         btn.className = 'class-btn disabled';
       }
-      
       rowDiv.appendChild(btn);
     }
     container.appendChild(rowDiv);
@@ -206,23 +172,16 @@ async function renderHomeScreenClassButtons() {
 
 function enterAttendanceMode(grade, cls) {
   currentSelectedClass = `${grade}-${cls}`;
-  
-  // 현재 설정된 날짜가 있으면 그 날짜로, 없으면 오늘로
-  if(!currentActiveDate) currentActiveDate = new Date();
-  
-  history.pushState({ mode: 'attendance' }, '', '');
-  switchView('attendanceScreen');
+  document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+  document.getElementById('attendanceScreen').classList.add('active');
   loadStudents();
 }
 
-// 통계 모드 진입
 function enterStatsMode() {
-  history.pushState({ mode: 'stats' }, '', '');
-  switchView('statsScreen');
-  
+  document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+  document.getElementById('statsScreen').classList.add('active');
   document.getElementById('btnSearchStats').onclick = runStatsSearch;
   
-  // 날짜 초기화
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -230,26 +189,25 @@ function enterStatsMode() {
   
   document.getElementById('statsDateInput').value = `${yyyy}-${mm}-${dd}`;
   document.getElementById('statsMonthInput').value = `${yyyy}-${mm}`;
+  document.getElementById('statsStartDate').value = `${yyyy}-${mm}-${dd}`;
+  document.getElementById('statsEndDate').value = `${yyyy}-${mm}-${dd}`;
 
   const radios = document.getElementsByName('statsType');
-  radios.forEach(r => r.addEventListener('change', () => {
-    if(r.value === 'daily') {
-      document.getElementById('statsDateInput').style.display = 'block';
-      document.getElementById('statsMonthInput').style.display = 'none';
-    } else {
-      document.getElementById('statsDateInput').style.display = 'none';
-      document.getElementById('statsMonthInput').style.display = 'block';
-    }
-  }));
-
+  radios.forEach(r => r.addEventListener('change', updateStatsUI));
+  updateStatsUI();
   renderStatsFilters();
+}
+
+function updateStatsUI() {
+  const mode = document.querySelector('input[name="statsType"]:checked').value;
+  document.getElementById('statsDateInput').style.display = (mode === 'daily') ? 'block' : 'none';
+  document.getElementById('statsMonthInput').style.display = (mode === 'monthly') ? 'block' : 'none';
+  document.getElementById('statsPeriodGroup').style.display = (mode === 'period') ? 'flex' : 'none';
 }
 
 function renderStatsFilters() {
   const container = document.getElementById('statsFilterContainer');
   container.innerHTML = "";
-  
-  // 전체 선택 체크박스
   const allWrapper = document.createElement('label');
   allWrapper.className = 'filter-tag';
   allWrapper.innerHTML = `<input type="checkbox" id="chkAll" checked><span>전체</span>`;
@@ -269,13 +227,12 @@ function renderStatsFilters() {
       });
     });
   }
-  
   const chkAll = document.getElementById('chkAll');
   const chkClasses = document.getElementsByName('classFilter');
   chkAll.addEventListener('change', (e) => chkClasses.forEach(cb => cb.checked = e.target.checked));
 }
 
-// [수정] 통계 조회 (월 단위 구조 반영)
+// [복구] 통계 로직 (상세 내역 파싱 포함)
 async function runStatsSearch() {
   const container = document.getElementById('statsContainer');
   container.innerHTML = '분석 중...';
@@ -286,124 +243,128 @@ async function runStatsSearch() {
   const targetClassKeys = Array.from(selectedCheckboxes).map(cb => cb.value);
   const mode = document.querySelector('input[name="statsType"]:checked').value;
   
-  let targetYear = CURRENT_YEAR;
-  let targetMonth = "";
-  let targetDay = -1;
-  
+  let startDate, endDate;
   if (mode === 'daily') {
-    const dVal = document.getElementById('statsDateInput').value;
-    const d = new Date(dVal);
-    targetYear = d.getFullYear().toString();
-    targetMonth = (d.getMonth()+1).toString();
-    targetDay = d.getDate();
-  } else {
-    const mVal = document.getElementById('statsMonthInput').value;
+    const d = new Date(document.getElementById('statsDateInput').value);
+    startDate = d; endDate = d;
+  } else if (mode === 'monthly') {
+    const mVal = document.getElementById('statsMonthInput').value; 
     const parts = mVal.split('-');
-    targetYear = parts[0];
-    targetMonth = parseInt(parts[1]).toString();
+    startDate = new Date(parts[0], parts[1]-1, 1);
+    endDate = new Date(parts[0], parts[1], 0); 
+  } else if (mode === 'period') {
+    startDate = new Date(document.getElementById('statsStartDate').value);
+    endDate = new Date(document.getElementById('statsEndDate').value);
   }
 
-  window.currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
+  // 데이터 가져오기 (기간 내 월 포함)
+  const promises = [];
+  let current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  const endLimit = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
   
-  // 데이터 페치 (해당 월 전체)
-  const promises = targetClassKeys.map(async key => {
-    // attendance/2025/12/1-1
-    const path = `attendance/${targetYear}/${targetMonth}/${key}`;
-    const snapshot = await get(child(ref(db), path));
-    return { key, val: snapshot.val() };
-  });
+  while(current <= endLimit) {
+    const y = current.getFullYear().toString();
+    const m = (current.getMonth()+1).toString();
+    targetClassKeys.forEach(key => {
+      const path = `attendance/${y}/${m}/${key}`;
+      promises.push(get(child(ref(db), path)).then(snap => ({ key, val: snap.val(), year: y, month: m })));
+    });
+    current.setMonth(current.getMonth() + 1);
+  }
 
   const results = await Promise.all(promises);
-  let html = `<div style="text-align:center; font-weight:bold; margin-bottom:15px;">
-              [${targetMonth}월 ${mode === 'daily' ? targetDay + '일' : '전체'} 통계]</div>`;
+  let html = `<div style="text-align:center; margin-bottom:15px; font-weight:bold;">[기간 조회 결과]</div>`;
+  const aggregated = {}; 
 
   results.forEach(res => {
     if(!res.val || !res.val.students) return;
-    const grade = res.key.split('-')[0];
-    window.currentStatsTotalCounts[grade] += res.val.students.length;
+    if(!aggregated[res.key]) aggregated[res.key] = {};
     
-    // 학생별 결석 체크
-    let classHtml = "";
-    let hasClassEvent = false;
-
     res.val.students.forEach(s => {
       if(!s.attendance) return;
-      
-      // 조건에 맞는 기록 필터링
-      const events = s.attendance.filter(a => {
-        if(mode === 'daily') return a.day == targetDay && a.value;
-        else return a.value; // 월별은 모든 값
+      const validLogs = s.attendance.filter(a => {
+        if(!a.value) return false;
+        const logDate = new Date(res.year, res.month - 1, a.day);
+        const check = new Date(logDate.toDateString());
+        const sDate = new Date(startDate.toDateString());
+        const eDate = new Date(endDate.toDateString());
+        return check >= sDate && check <= eDate;
       });
 
-      if(events.length > 0) {
-        hasClassEvent = true;
-        // 요약 텍스트 생성
-        let summary = "";
-        if(mode === 'daily') {
-          const values = events.map(e => `${e.period}교시(${e.value})`).join(', ');
-          summary = values;
-        } else {
-          // 월별: 날짜별 그룹핑
-          const dayMap = {};
-          events.forEach(e => {
-            if(!dayMap[e.day]) dayMap[e.day] = [];
-            dayMap[e.day].push(e);
-          });
-          summary = Object.keys(dayMap).map(d => `${d}일(${dayMap[d].length}건)`).join(', ');
-        }
-        
-        classHtml += `<div class="stats-student-row">
-          <div class="stats-student-name">${s.no}번 ${s.name}</div>
-          <div class="stats-detail">${summary}</div>
-        </div>`;
+      if(validLogs.length > 0) {
+        if(!aggregated[res.key][s.no]) aggregated[res.key][s.no] = { name: s.name, logs: [] };
+        aggregated[res.key][s.no].logs.push(...validLogs.map(l => ({...l, month: res.month})));
       }
     });
-
-    if(hasClassEvent) {
-      html += `<div class="stats-class-block"><div class="stats-class-header">${res.key}반</div>${classHtml}</div>`;
-    }
   });
 
-  if(html.indexOf("stats-class-block") === -1) {
-    html += "<div style='text-align:center; padding:30px; color:#999;'>특이사항 없음</div>";
-  }
+  let hasData = false;
+  Object.keys(aggregated).sort().forEach(cls => {
+    html += `<div class="stats-class-block"><div class="stats-class-header">${cls}반</div>`;
+    Object.keys(aggregated[cls]).sort((a,b)=>Number(a)-Number(b)).forEach(no => {
+      const student = aggregated[cls][no];
+      
+      // [복구] 친절한 파싱 (△ -> 인정 등)
+      const logsStr = student.logs.map(l => {
+         const { typeText, reason } = parseValueWithText(l.value);
+         let text = `${l.month}/${l.day} ${l.period}교시(${typeText}`;
+         if(reason) text += `, ${reason}`;
+         text += `)`;
+         return text;
+      }).join(', ');
+      
+      html += `<div class="stats-student-row">
+        <div class="stats-student-name">${no}번 ${student.name}</div>
+        <div class="stats-detail">${logsStr}</div>
+      </div>`;
+      hasData = true;
+    });
+    html += `</div>`;
+  });
 
+  if(!hasData) html = "<div style='text-align:center; padding:30px; color:#999;'>특이사항 없음</div>";
   container.innerHTML = html;
 }
 
+// 텍스트 변환 헬퍼
+function parseValueWithText(val) {
+  if (!val) return { typeText: "", reason: "" };
+  const match = val.toString().match(/^([^(\s]+)\s*(?:\((.+)\))?$/);
+  let symbol = val; 
+  let reason = "";
+  if (match) { symbol = match[1].trim(); reason = match[2] ? match[2].trim() : ""; }
+  
+  let typeText = symbol;
+  if(symbol === "△") typeText = "인정";
+  else if(symbol === "○") typeText = "병결";
+  else if(symbol === "Ⅹ" || symbol === "X") typeText = "무단";
+  
+  return { typeText, reason };
+}
 
-// [핵심] 출석부 데이터 로드 (월 단위 전체 로드 -> 일 단위 필터링)
 async function loadStudents() {
   pendingChanges = {};
   updateSaveButtonUI();
   
   const year = CURRENT_YEAR;
   const month = (currentActiveDate.getMonth() + 1).toString();
-  const day = currentActiveDate.getDate(); // 숫자형
+  const day = currentActiveDate.getDate();
   const combinedVal = currentSelectedClass; 
-
   if (!year || !month || !combinedVal) return;
 
-  const parts = combinedVal.split('-');
-  const grade = parts[0];
-  const cls = parts[1];
-
+  const [grade, cls] = combinedVal.split('-');
   document.getElementById('loading').style.display = 'inline';
   const container = document.getElementById('tableContainer');
   
-  // 캐싱 키 확인
   const cacheKey = `${year}-${month}-${combinedVal}`;
-  
   let data = null;
 
-  // 같은 반, 같은 월이면 네트워크 요청 스킵
+  // 캐싱된 데이터라도 최신 확정 여부를 위해 새로고침이 나을 수 있으나 우선 사용
   if (loadedMonthKey === cacheKey && loadedMonthData) {
     data = loadedMonthData;
   } else {
-    // Firebase: attendance/2025/12/1-1
-    const path = `attendance/${year}/${month}/${grade}-${cls}`;
     try {
-      const snapshot = await get(child(ref(db), path));
+      const snapshot = await get(child(ref(db), `attendance/${year}/${month}/${grade}-${cls}`));
       if (snapshot.exists()) {
         data = snapshot.val();
         loadedMonthData = data;
@@ -413,338 +374,158 @@ async function loadStudents() {
         document.getElementById('loading').style.display = 'none';
         return;
       }
-    } catch (error) {
-      console.error(error);
-      container.innerHTML = '데이터 로드 실패';
-      document.getElementById('loading').style.display = 'none';
-      return;
-    }
+    } catch (error) { container.innerHTML = '로드 실패'; return; }
   }
-
   renderTableDaily(data, day);
 }
 
-// [신규] 일일 테이블 렌더링
 function renderTableDaily(data, targetDay) {
   const container = document.getElementById('tableContainer');
   document.getElementById('loading').style.display = 'none';
+  if (!data || !data.students) { container.innerHTML = "오류"; return; }
 
-  if (!data || !data.students) {
-    container.innerHTML = "데이터 오류";
-    return;
-  }
-
-  // 1. 해당 날짜(targetDay)에 해당하는 교시(Period) 목록 추출
-  // 모든 학생을 스캔하여 해당 날짜에 존재하는 최대 교시를 찾음
   let periods = new Set();
-  
   data.students.forEach(s => {
-    if(s.attendance) {
-      s.attendance.forEach(a => {
-        if(a.day == targetDay) periods.add(a.period);
-      });
-    }
+    if(s.attendance) s.attendance.forEach(a => { if(a.day == targetDay) periods.add(a.period); });
   });
-
+  
   const sortedPeriods = Array.from(periods).sort((a,b) => {
-    // 교시가 숫자면 숫자 정렬, 아니면 문자 정렬
-    const na = parseInt(a);
-    const nb = parseInt(b);
-    if(!isNaN(na) && !isNaN(nb)) return na - nb;
-    return a.toString().localeCompare(b.toString());
+    const na = parseInt(a), nb = parseInt(b);
+    return (!isNaN(na) && !isNaN(nb)) ? na - nb : a.toString().localeCompare(b.toString());
   });
 
   if (sortedPeriods.length === 0) {
-    container.innerHTML = `<div style="padding:40px; text-align:center; color:#888;">
-      ${targetDay}일은 수업이 없는 날이거나<br>데이터가 없습니다.
-    </div>`;
+    container.innerHTML = `<div style="padding:40px; text-align:center; color:#888;">${targetDay}일 수업 데이터가 없습니다.</div>`;
     return;
   }
 
-  let html = '<table><thead><tr>';
-  html += '<th class="col-no">번호</th><th class="col-name">이름</th>';
-  
-  // 교시 헤더
-  sortedPeriods.forEach((p, idx) => {
-    const bgClass = (idx % 2 === 0) ? 'bg-period-1' : 'bg-period-2';
-    html += `<th class="${bgClass}">${p}교시</th>`;
-  });
-  
+  let html = '<table><thead><tr><th class="col-no">번호</th><th class="col-name">이름</th>';
+  sortedPeriods.forEach((p, i) => html += `<th class="${i%2===0?'bg-period-1':'bg-period-2'}">${p}교시</th>`);
   html += '</tr></thead><tbody>';
 
   data.students.forEach(std => {
-    html += '<tr>';
-    html += `<td>${std.no}</td>`;
-    html += `<td class="col-name" onclick="showStudentSummary('${std.no}', '${std.name}')">${std.name}</td>`;
-    
-    // 학생의 해당 날짜 출결 맵핑
+    html += '<tr><td>' + std.no + '</td><td class="col-name">' + std.name + '</td>';
     const todayAtt = {};
-    if(std.attendance) {
-      std.attendance.forEach(a => {
-        if(a.day == targetDay) todayAtt[a.period] = a;
-      });
-    }
+    if(std.attendance) std.attendance.forEach(a => { if(a.day == targetDay) todayAtt[a.period] = a; });
 
-    sortedPeriods.forEach((p, idx) => {
+    sortedPeriods.forEach((p, i) => {
       const att = todayAtt[p];
       const val = att ? att.value : "";
-      const bgClass = (idx % 2 === 0) ? 'bg-period-1' : 'bg-period-2';
-      
-      // DB 경로(path) 저장을 위해 row/col 인덱스 필요
-      // 하지만 Firebase 구조가 변경되어(월 단위), 업데이트 시에는 학생 배열 인덱스와 attendance 배열 인덱스를 찾아야 함.
-      // 편의상 data-key 로 직접 식별자를 심어둠 (stdNo-period)
-      // *주의*: 기존 로직(row/col 인덱스 기반)을 유지하려면 att.colIndex가 있어야 함.
-      // 구글 시트의 colIndex를 그대로 사용하므로 att.colIndex 사용 가능.
-      
       const colIndex = att ? att.colIndex : -1;
-      
-      html += `<td class="check-cell ${bgClass}" 
-               data-std-row="${std.rowNumber}" 
-               data-col-idx="${colIndex}"
-               data-val="${val}">
-               ${formatValueToHtml(val)}
-               </td>`;
+      html += `<td class="check-cell ${i%2===0?'bg-period-1':'bg-period-2'}" 
+               data-std-row="${std.rowNumber}" data-col-idx="${colIndex}" data-val="${val}"
+               onmousedown="handleCellClick(event, this)">
+               ${formatValue(val)}</td>`;
     });
     html += '</tr>';
   });
   html += '</tbody></table>';
-
   container.innerHTML = html;
-  
-  // 저장 버튼 텍스트 복구
-  updateSaveButtonUI();
-  
-  // 드래그/터치 리스너 다시 등록
-  addDragListeners();
 }
 
-function formatValueToHtml(val) {
+function formatValue(val) {
   if (!val) return "";
   const match = val.toString().match(/^([^(\s]+)\s*\((.+)\)$/);
   if (match) return `<span class="mark-symbol">${match[1]}</span><span class="mark-note">(${match[2]})</span>`;
   return `<span class="mark-symbol">${val}</span>`;
 }
 
-// [수정] 저장 로직
-async function executeSave() {
-  document.getElementById('confirmModal').classList.remove('show');
-  
-  const keys = Object.keys(pendingChanges); // 키 형식: "rowNumber-colIndex"
-  if (keys.length === 0 && !pendingNavigation) return;
-
-  const year = CURRENT_YEAR;
-  const month = (currentActiveDate.getMonth() + 1).toString();
-  const combinedVal = currentSelectedClass; 
-  const parts = combinedVal.split('-');
-  const grade = parts[0];
-  const cls = parts[1];
-
-  // 로컬 메모리 데이터 업데이트 (loadedMonthData)
-  keys.forEach(key => {
-    const [row, col] = key.split('-');
-    const val = pendingChanges[key];
-    
-    // loadedMonthData에서 해당 학생 찾아서 업데이트
-    const student = loadedMonthData.students.find(s => s.rowNumber == row);
-    if(student) {
-      const att = student.attendance.find(a => a.colIndex == col);
-      if(att) att.value = val;
-    }
-  });
-
-  // 백업용 (옵션)
-  const backupPayload = keys.map(key => {
-    const [r, c] = key.split('-');
-    return { year: year, row: r, col: c, value: pendingChanges[key] };
-  });
-
-  // Firebase 저장 (통째로 업데이트)
-  // *최적화*: 전체를 덮어쓰는게 안전함 (구조상)
-  const path = `attendance/${year}/${month}/${grade}-${cls}`;
-  const updateRef = ref(db, path);
-
-  try {
-    await update(updateRef, loadedMonthData);
-    
-    // UI 업데이트
-    keys.forEach(key => {
-       const [r, c] = key.split('-');
-       const cell = document.querySelector(`.check-cell[data-std-row="${r}"][data-col-idx="${c}"]`);
-       if(cell) cell.classList.remove('unsaved-cell');
-    });
-
-    showToast("저장 완료");
-
-    // 구글 시트 백업 (비동기)
-    if (backupPayload.length > 0) {
-        fetch(APPS_SCRIPT_URL, { 
-            method: "POST", 
-            body: JSON.stringify({ action: "saveAttendanceBatch", data: backupPayload }) 
-        }).catch(e => console.log("시트 백업 실패(무시)", e));
-    }
-
-    pendingChanges = {};
-    updateSaveButtonUI();
-
-    if (pendingNavigation) {
-        pendingNavigation(); 
-        pendingNavigation = null;
-    }
-
-  } catch (error) {
-    alert("저장 실패: " + error.message);
-  }
+window.handleCellClick = function(e, cell) {
+  processSingleCell(cell);
 }
 
-function showToast(message) { 
-  const t = document.getElementById("toast-container"); 
-  t.textContent = message; t.className = "show"; 
-  setTimeout(()=>{t.className = t.className.replace("show", "");}, 3000); 
-}
-function showConfirmModal() { document.getElementById('confirmModal').classList.add('show'); }
-function hideConfirmModal() { 
-  document.getElementById('confirmModal').classList.remove('show'); 
-  pendingNavigation = null;
-}
-
-function saveState() {
-  // 상태 저장 로직 (필요 시 구현)
-}
-
-function toggleReasonInput() {
-  const radios = document.getElementsByName('attType');
-  let selected = ""; 
-  for (const r of radios) if (r.checked) selected = r.value;
-  
-  const input = document.getElementById('reasonInput');
-  input.value = "";  
-  if (selected === "△" || selected === "○") input.disabled = false; 
-  else { input.disabled = true; input.value = ""; }
-}
-
-// ==========================================
-// [이벤트 핸들러] 드래그 & 터치 (기존 로직 유지/수정)
-// ==========================================
-function updateSaveButtonUI() {
-  const count = Object.keys(pendingChanges).length;
-  const nameHeader = document.querySelector('thead th.col-name');
-  if (!nameHeader) return;
-  if (count > 0) { 
-      nameHeader.innerHTML = `저장<br>(${count})`; 
-      nameHeader.classList.add('save-active'); 
-  } else { 
-      nameHeader.innerHTML = "이름"; 
-      nameHeader.classList.remove('save-active'); 
-  }
-}
-
-function onSaveBtnClick() { if (Object.keys(pendingChanges).length > 0) showConfirmModal(); }
-
-function addDragListeners() { 
-  const cells = document.querySelectorAll('.check-cell'); 
-  cells.forEach(c => { 
-    c.addEventListener('mousedown', onMouseDown); 
-    c.addEventListener('mouseenter', onMouseEnter); 
-    c.addEventListener('touchstart', onTouchStart); 
-    c.addEventListener('touchmove', onTouchMove); 
-    c.addEventListener('touchend', onTouchEnd); 
-  }); 
-  document.addEventListener('mouseup', onMouseUp); 
-}
-
-function onMouseDown(e) { 
-  if (Date.now() - lastTouchTime < 1000) return; 
-  const cell = e.currentTarget;
-  if (e.button === 0) { processSingleCell(cell); return; } // 좌클릭
-  if (e.button === 2) { startMultiSelect(cell); } // 우클릭
-}
-function onMouseEnter(e) { if(isMultiMode) addToSelection(e.currentTarget); }
-function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
-
-function onTouchStart(e) { 
-  if(navigator.vibrate) navigator.vibrate(1);
-  lastTouchTime = Date.now(); 
-  const cell = e.currentTarget;
-  dragStartCell = cell; 
-  longPressTimer = setTimeout(() => { 
-    if(navigator.vibrate) navigator.vibrate(50); 
-    startMultiSelect(cell); 
-  }, 300); 
-}
-function onTouchMove(e) { 
-  if(longPressTimer && !isMultiMode){clearTimeout(longPressTimer);longPressTimer=null;} 
-  if(isMultiMode){
-    e.preventDefault(); 
-    const t=e.touches[0]; 
-    const target=document.elementFromPoint(t.clientX, t.clientY); 
-    if(target){ const c=target.closest('.check-cell'); if(c) addToSelection(c); }
-  }
-}
-function onTouchEnd(e) { 
-  lastTouchTime = Date.now(); 
-  if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;} 
-  if(isMultiMode) finishMultiSelect(); 
-}
-
-function startMultiSelect(cell) { 
-  isMultiMode=true; 
-  selectedCells.clear(); 
-  const hasData = cell.getAttribute('data-val') && cell.getAttribute('data-val') !== "";
-  dragStartAction = hasData ? 'clear' : 'fill'; 
-  addToSelection(cell); 
-}
-function addToSelection(cell) { 
-  if(!selectedCells.has(cell)){ selectedCells.add(cell); cell.classList.add('multi-selecting'); } 
-}
-function finishMultiSelect() { 
-  isMultiMode=false; 
-  let val=""; 
-  if(dragStartAction==='fill'){
-    const s = document.querySelector('input[name="attType"]:checked').value; 
-    const r = document.getElementById('reasonInput').value.trim(); 
-    if(s!==""){ val=s; if((s==="△"||s==="○")&&r!=="") val=`${s}(${r})`; }
-  } 
-  selectedCells.forEach(c=>{ c.classList.remove('multi-selecting'); queueUpdate(c, val); }); 
-  selectedCells.clear(); 
-}
-
-function processSingleCell(cell) { 
-  if(isMultiMode) return; 
-  const hasData = cell.getAttribute('data-val') && cell.getAttribute('data-val') !== "";
-  let val = ""; 
-  if(!hasData){
-    const s = document.querySelector('input[name="attType"]:checked').value; 
-    const r = document.getElementById('reasonInput').value.trim(); 
-    if(s==="") return; 
-    val=s; 
-    if((s==="△"||s==="○")&&r!=="") val=`${s}(${r})`;
-  } 
-  queueUpdate(cell, val); 
+function processSingleCell(cell) {
+  const s = document.querySelector('input[name="attType"]:checked').value;
+  const r = document.getElementById('reasonInput').value.trim();
+  let val = s; 
+  if((s==="△"||s==="○")&&r!=="") val=`${s}(${r})`;
+  queueUpdate(cell, val);
 }
 
 function queueUpdate(cell, newValue) {
-  // 시각적 업데이트
-  cell.innerHTML = formatValueToHtml(newValue);
-  cell.setAttribute('data-val', newValue);
-  
-  cell.classList.remove('flash-success'); void cell.offsetWidth; cell.classList.add('flash-success');
-  
-  const r = cell.getAttribute('data-std-row'); 
-  const c = cell.getAttribute('data-col-idx');
-  const key = `${r}-${c}`;
-  
-  // 변경사항 큐에 추가
-  // 원래 값과 같으면 삭제 로직을 넣을 수 있으나, 월별 데이터 원본 비교가 번거로우므로 우선 변경 시 무조건 저장 대상
-  pendingChanges[key] = newValue;
+  cell.innerHTML = formatValue(newValue);
   cell.classList.add('unsaved-cell');
+  const r = cell.getAttribute('data-std-row');
+  const c = cell.getAttribute('data-col-idx');
+  pendingChanges[`${r}-${c}`] = newValue;
   updateSaveButtonUI();
 }
 
-window.showStudentSummary = function(studentNo, studentName) {
-  alert(`${studentName} 학생 상세 정보는 준비 중입니다.`);
-};
+function updateSaveButtonUI() {
+  const count = Object.keys(pendingChanges).length;
+  const th = document.querySelector('thead th.col-name');
+  if(th) {
+    if(count > 0) { th.innerHTML = `저장<br>(${count})`; th.classList.add('save-active'); }
+    else { th.innerHTML = "이름"; th.classList.remove('save-active'); }
+  }
+}
 
-// 학생 상세 모달 닫기
-function closeStudentModal() {
-  document.getElementById('studentModal').classList.remove('show');
+function onSaveBtnClick() { if(Object.keys(pendingChanges).length > 0) document.getElementById('confirmModal').classList.add('show'); }
+function hideConfirmModal() { document.getElementById('confirmModal').classList.remove('show'); }
+
+function toggleReasonInput() {
+  const s = document.querySelector('input[name="attType"]:checked').value;
+  const input = document.getElementById('reasonInput');
+  input.disabled = !(s === "△" || s === "○");
+  if(input.disabled) input.value = "";
+}
+
+// [핵심] 저장 시 색상 변경 트리거
+async function executeSave() {
+  hideConfirmModal();
+  const keys = Object.keys(pendingChanges);
+  
+  // 변경사항 없어도 확정 처리를 위해 진행될 수 있으나, 여기선 변경사항 있을때만
+  if(keys.length === 0) return;
+
+  const [grade, cls] = currentSelectedClass.split('-');
+  const month = (currentActiveDate.getMonth()+1).toString();
+  const day = currentActiveDate.getDate().toString();
+  
+  // 1. 로컬 데이터 업데이트
+  keys.forEach(k => {
+    const [row, col] = k.split('-');
+    const student = loadedMonthData.students.find(s => s.rowNumber == row);
+    if(student) {
+      const att = student.attendance.find(a => a.colIndex == col);
+      if(att) att.value = pendingChanges[k];
+      else {
+        // 데이터 없던 셀 처리
+        student.attendance.push({ colIndex: col, day: parseInt(day), period: "?", value: pendingChanges[k] });
+      }
+    }
+  });
+
+  // 2. 확정 상태 기록 (Today Confirmed = true)
+  if(!loadedMonthData.confirmations) loadedMonthData.confirmations = {};
+  loadedMonthData.confirmations[day] = true;
+
+  // 3. Firebase 저장
+  const path = `attendance/${CURRENT_YEAR}/${month}/${grade}-${cls}`;
+  await update(ref(db, path), loadedMonthData);
+  
+  // 4. 구글 시트 백업 및 색상 변경
+  const backupData = keys.map(k => {
+    const [r, c] = k.split('-');
+    return { year: CURRENT_YEAR, row: r, col: c, value: pendingChanges[k] };
+  });
+
+  // 일괄 저장 요청
+  fetch(APPS_SCRIPT_URL, { 
+    method: "POST", body: JSON.stringify({ action: "saveAttendanceBatch", data: backupData }) 
+  }).catch(console.error);
+
+  // [신규] 색상 변경 요청 (확정=true)
+  fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      action: "setConfirmationColor",
+      year: CURRENT_YEAR, month: month, grade: grade, classNum: cls, day: day,
+      isConfirmed: true 
+    })
+  }).catch(console.error);
+
+  pendingChanges = {};
+  document.querySelectorAll('.unsaved-cell').forEach(c => c.classList.remove('unsaved-cell'));
+  updateSaveButtonUI();
 }
