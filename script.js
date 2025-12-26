@@ -44,7 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
   window.executeSave = executeSave;
   window.closeStudentModal = closeStudentModal;
   window.toggleDateConfirmation = toggleDateConfirmation;
-  // [복구됨] 학생 상세 보기 함수 바인딩
   window.showStudentSummary = showStudentSummary;
   
   // 날짜 선택기 초기화
@@ -947,8 +946,7 @@ async function runStatsSearch() {
                     year: tm.year, 
                     month: tm.month, 
                     classKey, 
-                    val: monthData[classKey],
-                    confirmations: monthData.confirmations
+                    val: monthData[classKey] // 각 반의 데이터 (여기에 confirmations가 들어있음)
                 });
             }
         });
@@ -962,12 +960,14 @@ async function runStatsSearch() {
     const finalClassSet = new Set();
     let isAllConfirmed = true; 
 
+    // [수정된 부분] 확인 로직
     results.forEach(res => {
          if (!res.val) return;
 
          if (mode === 'daily') {
              const dayStr = filterStartDate.getDate().toString();
-             const isConfirmedToday = res.confirmations && res.confirmations[dayStr];
+             // [핵심 수정] res.val (반 데이터) 안의 confirmations 확인
+             const isConfirmedToday = res.val.confirmations && res.val.confirmations[dayStr];
              if (!isConfirmedToday) isAllConfirmed = false;
          } else {
              isAllConfirmed = false; 
