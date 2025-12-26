@@ -1,5 +1,3 @@
-// 
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, get, update, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -46,6 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.executeSave = executeSave;
   window.closeStudentModal = closeStudentModal;
   window.toggleDateConfirmation = toggleDateConfirmation;
+  // [복구됨] 학생 상세 보기 함수 바인딩
+  window.showStudentSummary = showStudentSummary;
   
   // 날짜 선택기 초기화
   setupDatePicker();
@@ -191,7 +191,6 @@ async function renderHomeScreenClassButtons() {
   
   // 이번 달 전체 데이터 가져와서 오늘 확정 여부 확인
   try {
-    // [변경] 경로에서 week 제거 (attendance/YYYY/MM)
     const path = `attendance/${year}/${month}`;
     const snapshot = await get(child(ref(db), path));
     if (snapshot.exists()) {
@@ -228,7 +227,6 @@ async function renderHomeScreenClassButtons() {
         // [확정 상태 확인]
         const classKey = `${g}-${c}`;
         const classData = monthData[classKey];
-        // data.confirmations[day] 가 true인지 확인
         const isConfirmedToday = classData && classData.confirmations && classData.confirmations[day];
 
         if (isConfirmedToday) {
@@ -250,7 +248,6 @@ async function renderHomeScreenClassButtons() {
 function enterAttendanceMode(grade, cls) {
   currentSelectedClass = `${grade}-${cls}`;
   
-  // 들어갈 때 날짜를 오늘로 초기화 (혹은 이전에 선택한 날짜 유지? -> 기획상 오늘이 나을듯)
   activeDate = new Date();
   updateDateLabel();
 
@@ -278,7 +275,6 @@ async function loadStudents() {
 
   document.getElementById('loading').style.display = 'inline';
   
-  // [변경] 주(Week) 제거된 경로 사용
   const path = `attendance/${year}/${month}/${grade}-${cls}`;
   const dbRef = ref(db);
 
@@ -320,8 +316,6 @@ function renderTable(data) {
   // 확정 여부
   const isConfirmed = data.confirmations[targetDayStr] === true;
   
-  // 해당 날짜의 교시 정보 파악 (첫 번째 학생 기준)
-  // 학생 데이터 구조: student.attendance = [{colIndex, day, period, value}, ...]
   const sampleStudent = data.students[0];
   const dayRecords = sampleStudent.attendance.filter(a => a.day == targetDay);
   
@@ -336,12 +330,10 @@ function renderTable(data) {
   // 테이블 생성
   let html = '<table><thead>';
   
-  // 헤더 1열: 날짜 및 마감 체크박스
   const dayOfWeek = getDayOfWeek(activeDate);
   const dateLabel = `${activeDate.getMonth()+1}/${targetDay}(${dayOfWeek})`;
 
   // [마감(확정) UI]
-  // 체크박스 상태에 따라 isConfirmed 값 반영
   const checkedAttr = isConfirmed ? 'checked' : '';
   const headerClass = isConfirmed ? 'confirmed-header' : '';
   const statusText = isConfirmed ? '마감됨' : '마감하기';
@@ -363,7 +355,6 @@ function renderTable(data) {
     <tr>
   `;
   
-  // 교시 헤더
   dayRecords.forEach(r => {
     html += `<th>${r.period}</th>`;
   });
@@ -375,9 +366,7 @@ function renderTable(data) {
     html += `<td>${std.no}</td>`;
     html += `<td class="col-name" onclick="showStudentSummary('${std.no}', '${std.name}')">${std.name}</td>`;
     
-    // 해당 날짜의 데이터만 필터링하여 매핑
     dayRecords.forEach(headerRec => {
-      // colIndex로 매칭 (가장 정확함)
       const cellData = std.attendance.find(a => a.colIndex == headerRec.colIndex) || {};
       const val = cellData.value || "";
       const displayHtml = formatValueToHtml(val);
@@ -399,7 +388,6 @@ function renderTable(data) {
   addFocusListeners();
 }
 
-// [신규] 날짜 확정 토글 (체크박스) -> 즉시 저장 및 시트 색상 변경
 async function toggleDateConfirmation(dayStr) {
   if (!currentRenderedData) return;
 
@@ -409,7 +397,7 @@ async function toggleDateConfirmation(dayStr) {
   if (!currentRenderedData.confirmations) currentRenderedData.confirmations = {};
   currentRenderedData.confirmations[dayStr] = newStatus;
 
-  // 1. Firebase 업데이트 (메타데이터)
+  // 1. Firebase 업데이트
   const year = CURRENT_YEAR;
   const month = (activeDate.getMonth() + 1).toString();
   const [grade, cls] = currentSelectedClass.split('-');
@@ -418,11 +406,9 @@ async function toggleDateConfirmation(dayStr) {
   try {
     await update(ref(db, path), { [dayStr]: newStatus });
     
-    // UI 즉시 반영 (리렌더링 없이 클래스 토글)
+    // UI 즉시 반영
     const header = document.querySelector('.header-day');
     const cells = document.querySelectorAll('.check-cell');
-    
-    // 텍스트 변경을 위해 부모 span 탐색
     const labelSpan = checkbox.nextElementSibling;
     if (labelSpan) labelSpan.innerText = newStatus ? "마감됨" : "마감하기";
     
@@ -434,9 +420,8 @@ async function toggleDateConfirmation(dayStr) {
       cells.forEach(c => c.classList.remove('confirmed-col'));
     }
     
-    // [중요] 2. Google 시트에 색상 동기화 요청
+    // 2. Google 시트 색상 동기화
     syncColorToGoogleSheet(newStatus);
-    
     showToast(newStatus ? "마감(확정) 되었습니다." : "마감 해제되었습니다.");
 
   } catch (e) {
@@ -445,33 +430,28 @@ async function toggleDateConfirmation(dayStr) {
   }
 }
 
-// [신규] 시트에 배경색 변경 요청 보내기
 function syncColorToGoogleSheet(isConfirmed) {
   if (!currentRenderedData || !currentRenderedData.students) return;
 
   const year = CURRENT_YEAR;
   const day = activeDate.getDate();
-  
-  // 현재 날짜의 모든 학생 데이터 셀 정보를 수집
   const batchData = [];
   
   currentRenderedData.students.forEach(std => {
-    // 해당 날짜(day)에 해당하는 attendance 찾기
     const dayAtts = std.attendance.filter(a => a.day == day);
     dayAtts.forEach(att => {
       batchData.push({
         year: year,
         row: std.rowNumber,
         col: att.colIndex,
-        value: att.value,     // 값은 그대로 유지
-        isConfirmed: isConfirmed // [핵심] 확정 여부 플래그
+        value: att.value,
+        isConfirmed: isConfirmed
       });
     });
   });
 
   if (batchData.length === 0) return;
 
-  // GAS로 전송
   const payload = { action: "saveAttendanceBatch", data: batchData };
   fetch(APPS_SCRIPT_URL, {
     method: "POST",
@@ -481,8 +461,6 @@ function syncColorToGoogleSheet(isConfirmed) {
     .catch(err => console.error("Color Sync Failed:", err));
 }
 
-
-// [수정] 데이터 저장 (확정 상태도 함께 전송하여 색상 유지)
 async function executeSave() {
   document.getElementById('confirmModal').classList.remove('show');
   const keys = Object.keys(pendingChanges);
@@ -492,11 +470,9 @@ async function executeSave() {
   const month = (activeDate.getMonth() + 1).toString();
   const [grade, cls] = currentSelectedClass.split('-');
   
-  // 현재 날짜의 확정 상태 확인
   const dayStr = activeDate.getDate().toString();
   const isConfirmed = currentRenderedData.confirmations ? currentRenderedData.confirmations[dayStr] : false;
 
-  // 1. 로컬 데이터 업데이트
   keys.forEach(key => {
     const [r, c] = key.split('-');
     const val = pendingChanges[key];
@@ -507,12 +483,10 @@ async function executeSave() {
     }
   });
 
-  // 2. Firebase 업데이트
   const path = `attendance/${year}/${month}/${grade}-${cls}`;
   try {
     await update(ref(db, path), currentRenderedData);
     
-    // UI 업데이트 (unsaved 클래스 제거)
     keys.forEach(key => {
       const [r, c] = key.split('-');
       const cell = document.querySelector(`.check-cell[data-row="${r}"][data-col="${c}"]`);
@@ -521,8 +495,6 @@ async function executeSave() {
 
     showToast("저장완료");
     
-    // 3. Google Sheet 백업 및 색상 동기화
-    // 변경된 셀들만 보내되, isConfirmed 정보를 담아서 보냄
     const backupPayload = keys.map(key => {
         const [r, c] = key.split('-');
         const val = pendingChanges[key];
@@ -531,7 +503,7 @@ async function executeSave() {
           row: r, 
           col: c, 
           value: val, 
-          isConfirmed: isConfirmed // 배경색 처리를 위해 전달
+          isConfirmed: isConfirmed
         };
     });
 
@@ -552,10 +524,7 @@ async function executeSave() {
   }
 }
 
-// 기타 유틸리티 함수들...
-function saveState() { 
-  // 날짜 기반이므로 로컬스토리지 저장 필요성이 낮아졌으나, 필요시 구현
-}
+function saveState() {}
 
 function toggleReasonInput() {
   const radios = document.getElementsByName('attType');
@@ -609,7 +578,6 @@ function queueUpdate(cell, newValue) {
   const c = cell.getAttribute('data-col');
   const key = `${r}-${c}`;
 
-  // 원본 값 확인
   let originalValue = "";
   if (currentRenderedData) {
     const student = currentRenderedData.students.find(s => s.rowNumber == r);
@@ -646,7 +614,7 @@ function updateSaveButtonUI() {
 
 function onSaveBtnClick() { if (Object.keys(pendingChanges).length === 0) return; showConfirmModal(); }
 
-// 드래그 및 터치 이벤트 핸들러
+// 드래그 및 터치
 function addDragListeners() { 
   const cells = document.querySelectorAll('.check-cell'); 
   cells.forEach(c => { 
@@ -667,8 +635,7 @@ function addFocusListeners() {
   }); 
 }
 
-function highlightHeaders(cell) { 
-}
+function highlightHeaders(cell) {}
 function clearHeaderHighlights() {}
 
 function onMouseDown(e) { 
@@ -715,7 +682,6 @@ function onTouchEnd(e) {
 
 function startMultiSelect(cell) { 
   if (cell.classList.contains('confirmed-col')) return; 
-
   isMultiMode=true; 
   selectedCells.clear(); 
   const hasData = cell.querySelector('.mark-symbol') !== null;
@@ -761,7 +727,92 @@ function processSingleCell(cell) {
   queueUpdate(cell, val); 
 }
 
-// 통계 모드 진입
+function closeStudentModal() {
+  document.getElementById('studentModal').classList.remove('show');
+}
+
+// =======================================================
+// [복구됨] 학생 상세 보기 팝업 함수
+// =======================================================
+function showStudentSummary(studentNo, studentName) {
+  // 현재 로드된 데이터(currentRenderedData)에 이번 달 정보가 이미 다 있음
+  if (!currentRenderedData || !currentRenderedData.students) {
+     alert("데이터가 로드되지 않았습니다.");
+     return;
+  }
+  
+  const student = currentRenderedData.students.find(s => s.no == studentNo);
+  if (!student) {
+     alert("학생 정보를 찾을 수 없습니다.");
+     return;
+  }
+
+  const month = (activeDate.getMonth() + 1).toString();
+  document.getElementById('studentModalTitle').innerText = `${studentName} (${month}월 출결)`;
+  
+  // 교시별 정렬 (Day -> Period)
+  const sortedAttendance = (student.attendance || []).sort((a,b) => {
+    return (parseInt(a.day) - parseInt(b.day)) || (parseInt(a.period) - parseInt(b.period));
+  });
+
+  renderStudentMonthlySummary(sortedAttendance);
+  document.getElementById('studentModal').classList.add('show');
+}
+
+function renderStudentMonthlySummary(attendanceList) {
+  const dayGroups = {};
+  attendanceList.forEach(att => {
+    if (!dayGroups[att.day]) dayGroups[att.day] = [];
+    dayGroups[att.day].push(att);
+  });
+  
+  let contentHtml = "";
+  const days = Object.keys(dayGroups).sort((a, b) => Number(a) - Number(b));
+  let hasData = false;
+  
+  days.forEach(day => {
+    const records = dayGroups[day];
+    const absents = records.filter(r => r.value && r.value.trim() !== "");
+    if (absents.length === 0) return; 
+    
+    hasData = true;
+    const isFullDay = (absents.length === records.length);
+    const firstVal = absents[0].value;
+    const isAllSame = absents.every(r => r.value === firstVal);
+    
+    contentHtml += `<div style="margin-bottom: 8px; font-size:15px; padding-bottom:5px; border-bottom:1px dashed #eee;">• <b>${day}일</b> : `;
+    
+    if (isFullDay && isAllSame) {
+      const { typeText, reason } = parseValueWithText(firstVal);
+      contentHtml += `<span style="font-weight:bold; color:#d63384;">${typeText}결석</span>`;
+      if (reason) contentHtml += `, ${reason}`;
+    } else {
+      const reasonGroups = {}; 
+      absents.forEach(a => {
+        if(!reasonGroups[a.value]) reasonGroups[a.value] = [];
+        reasonGroups[a.value].push(a.period);
+      });
+      const parts = [];
+      for (const [val, periods] of Object.entries(reasonGroups)) {
+        const { typeText, reason } = parseValueWithText(val);
+        const periodStr = periods.join('/');
+        let text = `${periodStr}교시 (<span style="font-weight:bold;">${typeText}</span>`;
+        if (reason) text += `, ${reason}`;
+        text += `)`;
+        parts.push(text);
+      }
+      contentHtml += parts.join(', ');
+    }
+    contentHtml += `</div>`;
+  });
+  
+  if (!hasData) contentHtml = "<div style='text-align:center; color:#999; padding:30px;'>이번 달 특이사항 없음</div>";
+  document.getElementById('studentModalBody').innerHTML = contentHtml;
+}
+
+// =======================================================
+// [통계 기능]
+// =======================================================
 async function enterStatsMode() {
   history.pushState({ mode: 'stats' }, '', '');
   switchView('statsScreen');
@@ -795,10 +846,8 @@ function updateStatsInputVisibility() {
 }
 
 function renderStatsFilters() {
-    // globalData를 기반으로 필터 생성
     const container = document.getElementById('statsFilterContainer');
     container.innerHTML = "";
-    
     if(!globalData[CURRENT_YEAR]) return;
     
     const grades = globalData[CURRENT_YEAR].grades || [];
@@ -823,27 +872,16 @@ function renderStatsFilters() {
     chkAll.addEventListener('change', (e) => { chkClasses.forEach(cb => cb.checked = e.target.checked); });
 }
 
-function closeStudentModal() {
-  document.getElementById('studentModal').classList.remove('show');
-}
-window.showStudentSummary = function(no, name) {
-    alert("상세 보기 기능 준비 중");
-}
-
-// =======================================================
-// [통계 조회] 수정된 로직 (주차 제거 -> 월 단위 조회)
-// =======================================================
 async function runStatsSearch() {
   const container = document.getElementById('statsContainer');
   container.innerHTML = '<div style="padding:40px; text-align:center; color:#888;">데이터 분석 중...</div>';
 
-  // 1. 선택된 반 확인
   const selectedCheckboxes = document.querySelectorAll('input[name="classFilter"]:checked');
   if (selectedCheckboxes.length === 0) {
     container.innerHTML = '<div style="padding:40px; text-align:center; color:red;">선택된 반이 없습니다.</div>';
     return;
   }
-  const targetClassKeys = Array.from(selectedCheckboxes).map(cb => cb.value); // ["1-1", "1-2"...]
+  const targetClassKeys = Array.from(selectedCheckboxes).map(cb => cb.value);
   
   const mode = document.querySelector('input[name="statsType"]:checked').value; 
   
@@ -852,7 +890,6 @@ async function runStatsSearch() {
   let filterEndDate = null;
   let displayTitle = "";
 
-  // 날짜 필터 설정
   if (mode === 'daily') {
     const dateStr = document.getElementById('statsDateInput').value; 
     if(!dateStr) { alert("날짜를 선택해주세요."); return; }
@@ -881,7 +918,6 @@ async function runStatsSearch() {
     if(filterStartDate > filterEndDate) { alert("날짜 범위 오류"); return; }
     displayTitle = `${startStr} ~ ${endStr} 통계`;
 
-    // 기간 내 모든 월 수집
     let curr = new Date(filterStartDate.getFullYear(), filterStartDate.getMonth(), 1);
     const endLimit = new Date(filterEndDate.getFullYear(), filterEndDate.getMonth(), 1);
     
@@ -891,25 +927,20 @@ async function runStatsSearch() {
     }
   }
   
-  // 통계 집계 변수
-  window.currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 }; // 학년별 총원
-  let fullDayAbsentCounts = { '1': 0, '2': 0, '3': 0 }; // 학년별 전일 결석자 수
+  window.currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
+  let fullDayAbsentCounts = { '1': 0, '2': 0, '3': 0 }; 
   
   try {
     const results = [];
-    
-    // 선택된 월(Month)들의 데이터 가져오기
     const promises = targetMonthsToFetch.map(async (tm) => {
-        // 경로 변경됨: attendance/YYYY/MM
         const path = `attendance/${tm.year}/${tm.month}`;
         const snapshot = await get(child(ref(db), path));
         
         if(!snapshot.exists()) return [];
         
-        const monthData = snapshot.val(); // { "1-1": {...}, "1-2": {...}, "confirmations": {...} }
+        const monthData = snapshot.val(); 
         const monthResults = [];
         
-        // 반별 데이터 추출
         targetClassKeys.forEach(classKey => {
             if (monthData[classKey]) {
                 monthResults.push({ 
@@ -917,7 +948,7 @@ async function runStatsSearch() {
                     month: tm.month, 
                     classKey, 
                     val: monthData[classKey],
-                    confirmations: monthData.confirmations // 해당 월의 마감 정보
+                    confirmations: monthData.confirmations
                 });
             }
         });
@@ -927,25 +958,21 @@ async function runStatsSearch() {
     const nestedResults = await Promise.all(promises);
     nestedResults.forEach(arr => results.push(...arr));
 
-    // 집계 시작
     const aggregated = {}; 
     const finalClassSet = new Set();
     let isAllConfirmed = true; 
 
-    // 1. 총원 계산 및 마감 여부 확인
     results.forEach(res => {
          if (!res.val) return;
 
-         // 일별 모드일 경우 마감(확정) 여부 체크
          if (mode === 'daily') {
              const dayStr = filterStartDate.getDate().toString();
              const isConfirmedToday = res.confirmations && res.confirmations[dayStr];
              if (!isConfirmedToday) isAllConfirmed = false;
          } else {
-             isAllConfirmed = false; // 월/기간 통계는 마감 요약 표시 안함 (복잡성 때문)
+             isAllConfirmed = false; 
          }
 
-         // 학년별 총원 (중복 집계 방지)
          if (!finalClassSet.has(res.classKey) && res.val.students) {
             const grade = res.classKey.split('-')[0];
             window.currentStatsTotalCounts[grade] += res.val.students.length;
@@ -953,7 +980,6 @@ async function runStatsSearch() {
          }
     });
 
-    // 2. 학생별 결석 데이터 필터링 및 집계
     results.forEach(res => {
       if (!res.val || !res.val.students) return;
       
@@ -966,9 +992,7 @@ async function runStatsSearch() {
       students.forEach(s => {
         if (!s.attendance) return;
 
-        // 해당 월/일 범위에 맞는 데이터만 필터링
         let validRecords = s.attendance.filter(a => {
-            // 값이 있는 것만 (결석 등)
             if (!a.value || a.value.trim() === "") return false;
 
             const rYear = parseInt(res.year);
@@ -981,21 +1005,16 @@ async function runStatsSearch() {
                 const fEnd = new Date(filterEndDate); fEnd.setHours(0,0,0,0);
                 return rDate >= fStart && rDate <= fEnd;
             }
-            return true; // monthly는 이미 월별 fetch 했으므로 pass
+            return true; 
         });
 
-        // 결과 데이터가 하나라도 있으면 집계
         if (validRecords.length > 0) {
-          
-          // 전일 결석 여부 판단 (일별 조회 시)
           if (mode === 'daily') {
              const targetDay = filterStartDate.getDate();
-             // 그 날의 전체 교시 수 계산 (빈 값 포함)
              const totalPeriodsThatDay = s.attendance.filter(a => a.day == targetDay).length;
              
-             // 결석 데이터 수 == 전체 교시 수 이면 전일 결석
              if (totalPeriodsThatDay > 0 && validRecords.length === totalPeriodsThatDay) {
-                 if (!aggregated[classKey][s.no]) { // 중복 방지
+                 if (!aggregated[classKey][s.no]) { 
                     fullDayAbsentCounts[grade]++;
                  }
              }
@@ -1005,14 +1024,11 @@ async function runStatsSearch() {
             aggregated[classKey][s.no] = { name: s.name, records: [] };
           }
 
-          // 화면 표시용 메타데이터 추가
           const recordsWithMeta = validRecords.map(r => {
               const rYear = parseInt(res.year);
               const rMonth = parseInt(res.month);
               const rDay = parseInt(r.day);
               const yoil = getDayOfWeek(new Date(rYear, rMonth-1, rDay));
-              
-              // 해당 날짜의 총 교시 수 구하기 (전일 결과 판별용)
               const totalP = s.attendance.filter(a => a.day == r.day).length;
 
               return {
@@ -1034,14 +1050,12 @@ async function runStatsSearch() {
   }
 }
 
-// [통계 렌더링] 결과 표시
 function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts) {
   const container = document.getElementById('statsContainer');
   let html = "";
   
   html += `<div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#555;">[ ${displayTitle} ]</div>`;
 
-  // 일별 모드 + 전체 마감 시 요약표 표시
   if (mode === 'daily' && isAllConfirmed) {
       const summary = calculateDailySummary(fullDayAbsentCounts);
       if(summary) html += summary;
@@ -1076,7 +1090,6 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
   container.innerHTML = html;
 }
 
-// [통계 요약] 상단 총계 박스
 function calculateDailySummary(fullDayAbsentCounts) {
   if (!window.currentStatsTotalCounts) return "";
   const totals = window.currentStatsTotalCounts;
@@ -1100,9 +1113,7 @@ function calculateDailySummary(fullDayAbsentCounts) {
   `;
 }
 
-// [통계 텍스트] 학생별 상세 내역 생성
 function getStudentSummaryText(records) {
-  // 날짜별 그룹화
   const dateGroups = {};
   records.forEach(r => {
     const key = r._fullDateStr;
@@ -1111,7 +1122,7 @@ function getStudentSummaryText(records) {
   });
 
   let lines = [];
-  const dateKeys = Object.keys(dateGroups).sort(); // 날짜순 정렬은 문자열이라 완벽하진 않으나 대략 맞음
+  const dateKeys = Object.keys(dateGroups).sort(); 
 
   dateKeys.forEach(dateStr => {
     const list = dateGroups[dateStr];
@@ -1129,7 +1140,6 @@ function getStudentSummaryText(records) {
        text += `<span style="color:#d63384; font-weight:bold;">${typeText}결석</span>`;
        if (reason) text += ` (${reason})`;
     } else {
-       // 교시별 결과 결과
        const reasonGroups = {};
        list.forEach(item => {
          if(!reasonGroups[item.value]) reasonGroups[item.value] = [];
@@ -1139,9 +1149,7 @@ function getStudentSummaryText(records) {
        const parts = [];
        for(const [val, periods] of Object.entries(reasonGroups)){
          const { typeText, reason } = parseValueWithText(val);
-         // 교시 정렬
          periods.sort((a,b)=>Number(a)-Number(b));
-         
          let sub = `${periods.join(',')}교시 ${typeText}결과`;
          if(reason) sub += `(${reason})`;
          parts.push(sub);
@@ -1154,7 +1162,6 @@ function getStudentSummaryText(records) {
   return lines.join('<br>');
 }
 
-// [유틸] 텍스트 파싱 (기존 함수 재사용)
 function parseValueWithText(val) {
   if (!val) return { typeText: "", reason: "" };
   const match = val.match(/^([^(]+)\s*(?:\((.+)\))?$/);
