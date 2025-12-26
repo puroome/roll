@@ -3,19 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <title>출석부</title>
-
   <link rel="icon" href="favicon.png" type="image/png">
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon_192.png">
-
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body class="overscroll-y-none">
   
@@ -64,9 +60,12 @@
   <div id="attendanceScreen" class="view-section">
     <div class="controls">
       <div class="control-row">
-        <div class="group-left">
-          <select id="monthSelect"><option>월</option></select>
-          <select id="weekSelect"><option>주</option></select>
+        
+        <div class="group-left date-control-wrapper">
+          <label for="dateInput" class="date-display-label" id="dateDisplayLabel">
+            12-29 📅
+          </label>
+          <input type="date" id="dateInput" class="hidden-date-input">
         </div>
         
         <button id="btnBackToHome" class="home-center-btn">🏠</button>
@@ -102,19 +101,12 @@
           <div class="radio-group">
             <label><input type="radio" name="statsType" value="daily" checked>일별</label>
             <label><input type="radio" name="statsType" value="monthly">월별</label>
-            <label><input type="radio" name="statsType" value="period">기간 설정</label>
           </div>
         </div>
 
         <div style="width: 100%; display: flex; justify-content: center; margin-top:5px;">
           <input type="date" id="statsDateInput" class="date-picker">
           <input type="month" id="statsMonthInput" class="date-picker" style="display:none;">
-          
-          <div id="statsPeriodInput" class="period-group">
-            <input type="date" id="statsStartDate" class="date-picker" style="width: 130px;">
-            <span class="period-separator">~</span>
-            <input type="date" id="statsEndDate" class="date-picker" style="width: 130px;">
-          </div>
         </div>
       </div>
 
@@ -131,7 +123,7 @@
     </div>
   </div>
 
-  <script type="module" src="script.js?v=7"></script>
+  <script type="module" src="script.js?v=8"></script>
 
   <script>
     if ('serviceWorker' in navigator) {
@@ -142,8 +134,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
