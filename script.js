@@ -376,7 +376,6 @@ function renderTable(data) {
     html += `<td class="col-name" onclick="showStudentSummary('${std.no}', '${std.name}')">${std.name}</td>`;
     
     // 해당 날짜의 데이터만 필터링하여 매핑
-    // 효율성을 위해 미리 맵으로 변환하거나 find 사용
     dayRecords.forEach(headerRec => {
       // colIndex로 매칭 (가장 정확함)
       const cellData = std.attendance.find(a => a.colIndex == headerRec.colIndex) || {};
@@ -422,6 +421,10 @@ async function toggleDateConfirmation(dayStr) {
     // UI 즉시 반영 (리렌더링 없이 클래스 토글)
     const header = document.querySelector('.header-day');
     const cells = document.querySelectorAll('.check-cell');
+    
+    // 텍스트 변경을 위해 부모 span 탐색
+    const labelSpan = checkbox.nextElementSibling;
+    if (labelSpan) labelSpan.innerText = newStatus ? "마감됨" : "마감하기";
     
     if (newStatus) {
       header.classList.add('confirmed-header');
@@ -665,8 +668,6 @@ function addFocusListeners() {
 }
 
 function highlightHeaders(cell) { 
-  // 심플하게 컬럼만 하이라이트
-  // (복잡한 로직 제거됨)
 }
 function clearHeaderHighlights() {}
 
@@ -760,7 +761,6 @@ function processSingleCell(cell) {
   queueUpdate(cell, val); 
 }
 
-// 학생 상세 보기 및 통계 관련 로직은 기존 유지 (단, 주차 로직은 제거됨)
 // 통계 모드 진입
 async function enterStatsMode() {
   history.pushState({ mode: 'stats' }, '', '');
@@ -795,7 +795,6 @@ function updateStatsInputVisibility() {
 }
 
 function renderStatsFilters() {
-    // 필터 렌더링 (생략 - 기존 로직과 유사)
     // globalData를 기반으로 필터 생성
     const container = document.getElementById('statsFilterContainer');
     container.innerHTML = "";
@@ -822,6 +821,13 @@ function renderStatsFilters() {
     const chkAll = document.getElementById('chkAll');
     const chkClasses = document.getElementsByName('classFilter');
     chkAll.addEventListener('change', (e) => { chkClasses.forEach(cb => cb.checked = e.target.checked); });
+}
+
+function closeStudentModal() {
+  document.getElementById('studentModal').classList.remove('show');
+}
+window.showStudentSummary = function(no, name) {
+    alert("상세 보기 기능 준비 중");
 }
 
 // =======================================================
@@ -1168,4 +1174,3 @@ function convertSymbolToText(symbol) {
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
 }
-
