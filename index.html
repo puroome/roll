@@ -3,10 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <title>출석부</title>
+
   <link rel="icon" href="favicon.png" type="image/png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="style.css?v=11">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon_192.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body class="overscroll-y-none">
   
@@ -26,7 +34,8 @@
   <div id="studentModal" class="modal-overlay">
     <div class="modal-box">
       <div id="studentModalTitle" class="modal-title">학생 이름</div>
-      <div id="studentModalBody" class="modal-body" style="text-align: left; max-height: 40vh; overflow-y: auto;"></div>
+      <div id="studentModalBody" class="modal-body" style="text-align: left; max-height: 40vh; overflow-y: auto;">
+      </div>
       <div class="modal-footer">
         <button onclick="closeStudentModal()" class="modal-btn confirm">확인</button>
       </div>
@@ -54,11 +63,11 @@
   <div id="attendanceScreen" class="view-section">
     <div class="controls">
       <div class="control-row">
-        
-        <div class="date-control-container">
-          <div class="date-text" id="dateDisplayLabel">12-24</div>
-          <div class="calendar-icon">📅</div>
-          <input type="date" id="dateInput" class="full-cover-date">
+        <div class="group-left">
+          <input type="date" id="mainDatePicker" style="position: absolute; opacity: 0; width: 1px; height: 1px;">
+          <button id="btnDateTrigger" class="date-trigger-btn">
+            <span id="dateDisplayLabel">--.--</span> 📅
+          </button>
         </div>
         
         <button id="btnBackToHome" class="home-center-btn">🏠</button>
@@ -94,18 +103,18 @@
           <div class="radio-group">
             <label><input type="radio" name="statsType" value="daily" checked>일별</label>
             <label><input type="radio" name="statsType" value="monthly">월별</label>
-            <label><input type="radio" name="statsType" value="period">기간</label>
+            <label><input type="radio" name="statsType" value="period">기간 설정</label>
           </div>
         </div>
 
-        <div style="width: 100%; display: flex; justify-content: center; margin-top:5px; gap:5px;">
+        <div style="width: 100%; display: flex; justify-content: center; margin-top:5px;">
           <input type="date" id="statsDateInput" class="date-picker">
           <input type="month" id="statsMonthInput" class="date-picker" style="display:none;">
           
-          <div id="statsPeriodGroup" class="period-group" style="display:none; align-items:center; gap:5px;">
-            <input type="date" id="statsStartDate" class="date-picker" style="width:110px;">
-            <span>~</span>
-            <input type="date" id="statsEndDate" class="date-picker" style="width:110px;">
+          <div id="statsPeriodInput" class="period-group">
+            <input type="date" id="statsStartDate" class="date-picker" style="width: 130px;">
+            <span class="period-separator">~</span>
+            <input type="date" id="statsEndDate" class="date-picker" style="width: 130px;">
           </div>
         </div>
       </div>
@@ -123,6 +132,14 @@
     </div>
   </div>
 
-  <script type="module" src="script.js?v=11"></script>
+  <script type="module" src="script.js?v=8"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('서비스 워커 등록 성공'))
+        .catch(() => console.log('서비스 워커 등록 실패'));
+    }
+  </script>
 </body>
 </html>
