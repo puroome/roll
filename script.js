@@ -824,17 +824,348 @@ function renderStatsFilters() {
     chkAll.addEventListener('change', (e) => { chkClasses.forEach(cb => cb.checked = e.target.checked); });
 }
 
-// [통계 조회] 주차 로직 제거 후 월 단위 순회로 변경
+// =======================================================
+// [통계 조회] 수정된 로직 (주차 제거 -> 월 단위 조회)
+// =======================================================
 async function runStatsSearch() {
-  // ... (기존 통계 로직을 월 단위로 단순화하여 구현 필요. 
-  // 이번 요청 범위가 "뷰 변경"이므로 상세 구현은 생략하되 
-  // 에러가 나지 않도록 빈 함수로 두거나 기존 로직을 수정해야 함)
-  alert("통계 기능은 현재 데이터 구조 변경으로 인해 점검 중입니다.");
+  const container = document.getElementById('statsContainer');
+  container.innerHTML = '<div style="padding:40px; text-align:center; color:#888;">데이터 분석 중...</div>';
+
+  // 1. 선택된 반 확인
+  const selectedCheckboxes = document.querySelectorAll('input[name="classFilter"]:checked');
+  if (selectedCheckboxes.length === 0) {
+    container.innerHTML = '<div style="padding:40px; text-align:center; color:red;">선택된 반이 없습니다.</div>';
+    return;
+  }
+  const targetClassKeys = Array.from(selectedCheckboxes).map(cb => cb.value); // ["1-1", "1-2"...]
+  
+  const mode = document.querySelector('input[name="statsType"]:checked').value; 
+  
+  let targetMonthsToFetch = []; 
+  let filterStartDate = null;
+  let filterEndDate = null;
+  let displayTitle = "";
+
+  // 날짜 필터 설정
+  if (mode === 'daily') {
+    const dateStr = document.getElementById('statsDateInput').value; 
+    if(!dateStr) { alert("날짜를 선택해주세요."); return; }
+    const d = new Date(dateStr);
+    filterStartDate = d;
+    filterEndDate = d;
+    targetMonthsToFetch.push({ year: d.getFullYear().toString(), month: (d.getMonth()+1).toString() });
+    
+    const dayChar = getDayOfWeek(d);
+    displayTitle = `${d.getMonth()+1}월 ${d.getDate()}일(${dayChar}) 통계`;
+
+  } else if (mode === 'monthly') {
+    const monthStr = document.getElementById('statsMonthInput').value; 
+    if(!monthStr) { alert("월을 선택해주세요."); return; }
+    const parts = monthStr.split('-');
+    targetMonthsToFetch.push({ year: parts[0], month: parseInt(parts[1]).toString() });
+    displayTitle = `${parseInt(parts[1])}월 전체 통계`;
+
+  } else if (mode === 'period') {
+    const startStr = document.getElementById('statsStartDate').value;
+    const endStr = document.getElementById('statsEndDate').value;
+    if(!startStr || !endStr) { alert("시작일과 종료일을 선택해주세요."); return; }
+    
+    filterStartDate = new Date(startStr);
+    filterEndDate = new Date(endStr);
+    if(filterStartDate > filterEndDate) { alert("날짜 범위 오류"); return; }
+    displayTitle = `${startStr} ~ ${endStr} 통계`;
+
+    // 기간 내 모든 월 수집
+    let curr = new Date(filterStartDate.getFullYear(), filterStartDate.getMonth(), 1);
+    const endLimit = new Date(filterEndDate.getFullYear(), filterEndDate.getMonth(), 1);
+    
+    while(curr <= endLimit) {
+        targetMonthsToFetch.push({ year: curr.getFullYear().toString(), month: (curr.getMonth()+1).toString() });
+        curr.setMonth(curr.getMonth() + 1);
+    }
+  }
+  
+  // 통계 집계 변수
+  window.currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 }; // 학년별 총원
+  let fullDayAbsentCounts = { '1': 0, '2': 0, '3': 0 }; // 학년별 전일 결석자 수
+  
+  try {
+    const results = [];
+    
+    // 선택된 월(Month)들의 데이터 가져오기
+    const promises = targetMonthsToFetch.map(async (tm) => {
+        // 경로 변경됨: attendance/YYYY/MM
+        const path = `attendance/${tm.year}/${tm.month}`;
+        const snapshot = await get(child(ref(db), path));
+        
+        if(!snapshot.exists()) return [];
+        
+        const monthData = snapshot.val(); // { "1-1": {...}, "1-2": {...}, "confirmations": {...} }
+        const monthResults = [];
+        
+        // 반별 데이터 추출
+        targetClassKeys.forEach(classKey => {
+            if (monthData[classKey]) {
+                monthResults.push({ 
+                    year: tm.year, 
+                    month: tm.month, 
+                    classKey, 
+                    val: monthData[classKey],
+                    confirmations: monthData.confirmations // 해당 월의 마감 정보
+                });
+            }
+        });
+        return monthResults;
+    });
+
+    const nestedResults = await Promise.all(promises);
+    nestedResults.forEach(arr => results.push(...arr));
+
+    // 집계 시작
+    const aggregated = {}; 
+    const finalClassSet = new Set();
+    let isAllConfirmed = true; 
+
+    // 1. 총원 계산 및 마감 여부 확인
+    results.forEach(res => {
+         if (!res.val) return;
+
+         // 일별 모드일 경우 마감(확정) 여부 체크
+         if (mode === 'daily') {
+             const dayStr = filterStartDate.getDate().toString();
+             const isConfirmedToday = res.confirmations && res.confirmations[dayStr];
+             if (!isConfirmedToday) isAllConfirmed = false;
+         } else {
+             isAllConfirmed = false; // 월/기간 통계는 마감 요약 표시 안함 (복잡성 때문)
+         }
+
+         // 학년별 총원 (중복 집계 방지)
+         if (!finalClassSet.has(res.classKey) && res.val.students) {
+            const grade = res.classKey.split('-')[0];
+            window.currentStatsTotalCounts[grade] += res.val.students.length;
+            finalClassSet.add(res.classKey);
+         }
+    });
+
+    // 2. 학생별 결석 데이터 필터링 및 집계
+    results.forEach(res => {
+      if (!res.val || !res.val.students) return;
+      
+      const classKey = res.classKey;
+      const grade = classKey.split('-')[0];
+      const students = res.val.students;
+
+      if (!aggregated[classKey]) aggregated[classKey] = {};
+
+      students.forEach(s => {
+        if (!s.attendance) return;
+
+        // 해당 월/일 범위에 맞는 데이터만 필터링
+        let validRecords = s.attendance.filter(a => {
+            // 값이 있는 것만 (결석 등)
+            if (!a.value || a.value.trim() === "") return false;
+
+            const rYear = parseInt(res.year);
+            const rMonth = parseInt(res.month);
+            const rDay = parseInt(a.day);
+            const rDate = new Date(rYear, rMonth - 1, rDay);
+
+            if (mode === 'daily' || mode === 'period') {
+                const fStart = new Date(filterStartDate); fStart.setHours(0,0,0,0);
+                const fEnd = new Date(filterEndDate); fEnd.setHours(0,0,0,0);
+                return rDate >= fStart && rDate <= fEnd;
+            }
+            return true; // monthly는 이미 월별 fetch 했으므로 pass
+        });
+
+        // 결과 데이터가 하나라도 있으면 집계
+        if (validRecords.length > 0) {
+          
+          // 전일 결석 여부 판단 (일별 조회 시)
+          if (mode === 'daily') {
+             const targetDay = filterStartDate.getDate();
+             // 그 날의 전체 교시 수 계산 (빈 값 포함)
+             const totalPeriodsThatDay = s.attendance.filter(a => a.day == targetDay).length;
+             
+             // 결석 데이터 수 == 전체 교시 수 이면 전일 결석
+             if (totalPeriodsThatDay > 0 && validRecords.length === totalPeriodsThatDay) {
+                 if (!aggregated[classKey][s.no]) { // 중복 방지
+                    fullDayAbsentCounts[grade]++;
+                 }
+             }
+          }
+
+          if (!aggregated[classKey][s.no]) {
+            aggregated[classKey][s.no] = { name: s.name, records: [] };
+          }
+
+          // 화면 표시용 메타데이터 추가
+          const recordsWithMeta = validRecords.map(r => {
+              const rYear = parseInt(res.year);
+              const rMonth = parseInt(res.month);
+              const rDay = parseInt(r.day);
+              const yoil = getDayOfWeek(new Date(rYear, rMonth-1, rDay));
+              
+              // 해당 날짜의 총 교시 수 구하기 (전일 결과 판별용)
+              const totalP = s.attendance.filter(a => a.day == r.day).length;
+
+              return {
+                  ...r,
+                  _fullDateStr: `${rMonth}월 ${rDay}일(${yoil})`,
+                  _totalPeriods: totalP
+              };
+          });
+          aggregated[classKey][s.no].records.push(...recordsWithMeta);
+        }
+      });
+    });
+
+    renderStatsResult(aggregated, targetClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts);
+
+  } catch (e) {
+    console.error(e);
+    container.innerHTML = `<div style="text-align:center; color:red;">오류: ${e.message}</div>`;
+  }
 }
 
-function closeStudentModal() {
-  document.getElementById('studentModal').classList.remove('show');
+// [통계 렌더링] 결과 표시
+function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts) {
+  const container = document.getElementById('statsContainer');
+  let html = "";
+  
+  html += `<div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#555;">[ ${displayTitle} ]</div>`;
+
+  // 일별 모드 + 전체 마감 시 요약표 표시
+  if (mode === 'daily' && isAllConfirmed) {
+      const summary = calculateDailySummary(fullDayAbsentCounts);
+      if(summary) html += summary;
+  }
+
+  let hasAnyData = false;
+  sortedClassKeys.forEach(classKey => {
+    const studentsMap = aggregatedData[classKey];
+    if (!studentsMap || Object.keys(studentsMap).length === 0) return;
+
+    hasAnyData = true;
+    html += `<div class="stats-class-block"><div class="stats-class-header">${classKey}반</div>`;
+
+    const sortedStudentNos = Object.keys(studentsMap).sort((a,b) => Number(a) - Number(b));
+    
+    sortedStudentNos.forEach(sNo => {
+      const sData = studentsMap[sNo];
+      const summary = getStudentSummaryText(sData.records);
+      if(summary) {
+        html += `<div class="stats-student-row">
+          <div class="stats-student-name">${sNo}번 ${sData.name}</div>
+          <div class="stats-detail">${summary}</div>
+        </div>`;
+      }
+    });
+    html += `</div>`;
+  });
+
+  if (!hasAnyData) {
+    html += `<div style="padding:20px; text-align:center; color:#888;">해당 기간에 특이사항(결석 등)이 없습니다.</div>`;
+  }
+  container.innerHTML = html;
 }
-window.showStudentSummary = function(no, name) {
-    alert("상세 보기 기능 준비 중");
+
+// [통계 요약] 상단 총계 박스
+function calculateDailySummary(fullDayAbsentCounts) {
+  if (!window.currentStatsTotalCounts) return "";
+  const totals = window.currentStatsTotalCounts;
+  
+  const present1 = (totals['1'] || 0) - (fullDayAbsentCounts['1'] || 0);
+  const present2 = (totals['2'] || 0) - (fullDayAbsentCounts['2'] || 0);
+  const present3 = (totals['3'] || 0) - (fullDayAbsentCounts['3'] || 0);
+
+  const allTotal = (totals['1']||0) + (totals['2']||0) + (totals['3']||0);
+  const allPresent = present1 + present2 + present3;
+
+  if (allTotal === 0) return "";
+
+  return `
+    <div class="stats-summary-box">
+      <div class="stats-summary-row"><span>1학년</span> <span>${present1} / ${totals['1']||0}</span></div>
+      <div class="stats-summary-row"><span>2학년</span> <span>${present2} / ${totals['2']||0}</span></div>
+      <div class="stats-summary-row"><span>3학년</span> <span>${present3} / ${totals['3']||0}</span></div>
+      <div class="stats-summary-row summary-total"><span>전학년 출석</span> <span>${allPresent} / ${allTotal}</span></div>
+    </div>
+  `;
 }
+
+// [통계 텍스트] 학생별 상세 내역 생성
+function getStudentSummaryText(records) {
+  // 날짜별 그룹화
+  const dateGroups = {};
+  records.forEach(r => {
+    const key = r._fullDateStr;
+    if(!dateGroups[key]) dateGroups[key] = [];
+    dateGroups[key].push(r);
+  });
+
+  let lines = [];
+  const dateKeys = Object.keys(dateGroups).sort(); // 날짜순 정렬은 문자열이라 완벽하진 않으나 대략 맞음
+
+  dateKeys.forEach(dateStr => {
+    const list = dateGroups[dateStr];
+    
+    const totalPeriods = list[0]._totalPeriods || 0;
+    const isFullDay = (totalPeriods > 0 && list.length === totalPeriods);
+    
+    const firstVal = list[0].value;
+    const isAllSame = list.every(x => x.value === firstVal);
+
+    let text = `<b>${dateStr}</b>: `;
+    
+    if (isFullDay && isAllSame) {
+       const { typeText, reason } = parseValueWithText(firstVal);
+       text += `<span style="color:#d63384; font-weight:bold;">${typeText}결석</span>`;
+       if (reason) text += ` (${reason})`;
+    } else {
+       // 교시별 결과 결과
+       const reasonGroups = {};
+       list.forEach(item => {
+         if(!reasonGroups[item.value]) reasonGroups[item.value] = [];
+         reasonGroups[item.value].push(item.period);
+       });
+       
+       const parts = [];
+       for(const [val, periods] of Object.entries(reasonGroups)){
+         const { typeText, reason } = parseValueWithText(val);
+         // 교시 정렬
+         periods.sort((a,b)=>Number(a)-Number(b));
+         
+         let sub = `${periods.join(',')}교시 ${typeText}결과`;
+         if(reason) sub += `(${reason})`;
+         parts.push(sub);
+       }
+       text += parts.join(' / ');
+    }
+    lines.push(text);
+  });
+
+  return lines.join('<br>');
+}
+
+// [유틸] 텍스트 파싱 (기존 함수 재사용)
+function parseValueWithText(val) {
+  if (!val) return { typeText: "", reason: "" };
+  const match = val.match(/^([^(]+)\s*(?:\((.+)\))?$/);
+  let symbol = val;
+  let reason = "";
+  if (match) {
+    symbol = match[1].trim();
+    reason = match[2] ? match[2].trim() : "";
+  }
+  const typeText = convertSymbolToText(symbol);
+  return { typeText, reason };
+}
+
+function convertSymbolToText(symbol) {
+  if (symbol === '△') return '인정';
+  if (symbol === '○') return '병';
+  if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
+  return symbol; 
+}
+
