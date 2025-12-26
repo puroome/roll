@@ -30,19 +30,24 @@ document.addEventListener('DOMContentLoaded', () => {
   window.closeStudentModal = closeStudentModal;
   window.executeSave = executeSave;
   window.hideConfirmModal = hideConfirmModal;
+  window.handleCellClick = handleCellClick;
   
+  // [안전장치] HTML이 업데이트되지 않았을 경우 경고
   const dateInput = document.getElementById('dateInput');
+  if (!dateInput) {
+    alert("오류: index.html 파일이 최신 버전이 아닙니다. 파일을 덮어씌워주세요!");
+    return;
+  }
+
   dateInput.addEventListener('change', (e) => {
     if(!e.target.value) return;
     const newDate = new Date(e.target.value);
-    
     if (Object.keys(pendingChanges).length > 0) {
       if(!confirm("저장하지 않은 데이터가 있습니다. 이동하시겠습니까?")) {
         updateDateLabel(currentActiveDate);
         return;
       }
     }
-    
     currentActiveDate = newDate;
     updateDateLabel(newDate);
     loadStudents();
@@ -93,23 +98,31 @@ function goHome() {
   renderHomeScreenClassButtons();
 }
 
+// [수정] 데이터 없을 때 멈춤 현상 해결
 async function fetchInitDataFromFirebase() {
   try {
     const snapshot = await get(child(ref(db), `metadata`));
     if (snapshot.exists()) {
       globalData = snapshot.val();
       renderHomeScreenClassButtons();
+    } else {
+      // 데이터가 없을 경우 안내 표시
+      document.getElementById('classButtonContainer').innerHTML = 
+        '<div style="grid-column:1/-1; text-align:center; padding:20px; line-height:1.5;">' +
+        '데이터가 없습니다.<br>구글 시트 확장프로그램에서<br><b>[Firebase로 데이터 동기화]</b>를<br>실행해주세요.</div>';
     }
-  } catch (error) { console.error(error); }
+  } catch (error) { 
+    console.error(error); 
+    document.getElementById('classButtonContainer').innerHTML = "연결 오류: " + error.message;
+  }
 }
 
-// [핵심] 반 버튼 색상 로직: 오늘 확정 여부 체크
+// [핵심] 홈 화면 반 버튼: 오늘 확정 여부 체크 (노랑/회색)
 async function renderHomeScreenClassButtons() {
   const container = document.getElementById('classButtonContainer');
   const year = CURRENT_YEAR;
   if (!globalData[year]) { container.innerHTML = "데이터 없음"; return; }
 
-  // [중요] 오늘 날짜 확정 상태 조회를 위해 병렬 요청
   const today = new Date();
   const mm = (today.getMonth()+1).toString();
   const dd = today.getDate().toString();
@@ -119,15 +132,12 @@ async function renderHomeScreenClassButtons() {
   
   container.innerHTML = "출결 확인 중...";
   
-  // 모든 반의 오늘 상태 조회
-  const statusMap = {}; // {'1-1': true/false}
-  
-  // DB 부하를 줄이기 위해 루프 돌며 요청 (실제 환경에선 상위 노드 fetch 고려)
+  const statusMap = {}; 
   const promises = [];
   const classKeys = [];
 
   ['1', '2', '3'].forEach(g => {
-     ['1', '2'].forEach(c => { // 예시: 1, 2반만 있다고 가정하거나 globalData 루프 사용
+     ['1', '2'].forEach(c => { 
         if(existingGrades.includes(g) && existingClasses.includes(c)) {
            const key = `${g}-${c}`;
            classKeys.push(key);
@@ -154,11 +164,10 @@ async function renderHomeScreenClassButtons() {
       btn.innerText = key;
       
       if (existingGrades.includes(g) && existingClasses.includes(c)) {
-        // [조건] 확정되었으면 노랑(grade-1), 아니면 회색(gray-status)
         if(statusMap[key]) {
-             btn.className = 'class-btn grade-1'; 
+             btn.className = 'class-btn grade-1'; // 확정(노랑)
         } else {
-             btn.className = 'class-btn gray-status';
+             btn.className = 'class-btn gray-status'; // 미확정(회색)
         }
         btn.onclick = () => enterAttendanceMode(g, c);
       } else {
@@ -232,7 +241,7 @@ function renderStatsFilters() {
   chkAll.addEventListener('change', (e) => chkClasses.forEach(cb => cb.checked = e.target.checked));
 }
 
-// [복구] 통계 로직 (상세 내역 파싱 포함)
+// [복구] 상세 내역 및 기간 조회 로직
 async function runStatsSearch() {
   const container = document.getElementById('statsContainer');
   container.innerHTML = '분석 중...';
@@ -257,7 +266,6 @@ async function runStatsSearch() {
     endDate = new Date(document.getElementById('statsEndDate').value);
   }
 
-  // 데이터 가져오기 (기간 내 월 포함)
   const promises = [];
   let current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
   const endLimit = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
@@ -304,7 +312,6 @@ async function runStatsSearch() {
     Object.keys(aggregated[cls]).sort((a,b)=>Number(a)-Number(b)).forEach(no => {
       const student = aggregated[cls][no];
       
-      // [복구] 친절한 파싱 (△ -> 인정 등)
       const logsStr = student.logs.map(l => {
          const { typeText, reason } = parseValueWithText(l.value);
          let text = `${l.month}/${l.day} ${l.period}교시(${typeText}`;
@@ -326,7 +333,6 @@ async function runStatsSearch() {
   container.innerHTML = html;
 }
 
-// 텍스트 변환 헬퍼
 function parseValueWithText(val) {
   if (!val) return { typeText: "", reason: "" };
   const match = val.toString().match(/^([^(\s]+)\s*(?:\((.+)\))?$/);
@@ -359,7 +365,6 @@ async function loadStudents() {
   const cacheKey = `${year}-${month}-${combinedVal}`;
   let data = null;
 
-  // 캐싱된 데이터라도 최신 확정 여부를 위해 새로고침이 나을 수 있으나 우선 사용
   if (loadedMonthKey === cacheKey && loadedMonthData) {
     data = loadedMonthData;
   } else {
@@ -430,7 +435,7 @@ function formatValue(val) {
   return `<span class="mark-symbol">${val}</span>`;
 }
 
-window.handleCellClick = function(e, cell) {
+function handleCellClick(e, cell) {
   processSingleCell(cell);
 }
 
@@ -470,19 +475,15 @@ function toggleReasonInput() {
   if(input.disabled) input.value = "";
 }
 
-// [핵심] 저장 시 색상 변경 트리거
 async function executeSave() {
   hideConfirmModal();
   const keys = Object.keys(pendingChanges);
-  
-  // 변경사항 없어도 확정 처리를 위해 진행될 수 있으나, 여기선 변경사항 있을때만
   if(keys.length === 0) return;
 
   const [grade, cls] = currentSelectedClass.split('-');
   const month = (currentActiveDate.getMonth()+1).toString();
   const day = currentActiveDate.getDate().toString();
   
-  // 1. 로컬 데이터 업데이트
   keys.forEach(k => {
     const [row, col] = k.split('-');
     const student = loadedMonthData.students.find(s => s.rowNumber == row);
@@ -490,32 +491,27 @@ async function executeSave() {
       const att = student.attendance.find(a => a.colIndex == col);
       if(att) att.value = pendingChanges[k];
       else {
-        // 데이터 없던 셀 처리
         student.attendance.push({ colIndex: col, day: parseInt(day), period: "?", value: pendingChanges[k] });
       }
     }
   });
 
-  // 2. 확정 상태 기록 (Today Confirmed = true)
   if(!loadedMonthData.confirmations) loadedMonthData.confirmations = {};
   loadedMonthData.confirmations[day] = true;
 
-  // 3. Firebase 저장
   const path = `attendance/${CURRENT_YEAR}/${month}/${grade}-${cls}`;
   await update(ref(db, path), loadedMonthData);
   
-  // 4. 구글 시트 백업 및 색상 변경
   const backupData = keys.map(k => {
     const [r, c] = k.split('-');
     return { year: CURRENT_YEAR, row: r, col: c, value: pendingChanges[k] };
   });
 
-  // 일괄 저장 요청
   fetch(APPS_SCRIPT_URL, { 
     method: "POST", body: JSON.stringify({ action: "saveAttendanceBatch", data: backupData }) 
   }).catch(console.error);
 
-  // [신규] 색상 변경 요청 (확정=true)
+  // [신규] 구글 시트 색상 변경 요청 (확정=true)
   fetch(APPS_SCRIPT_URL, {
     method: "POST",
     body: JSON.stringify({
