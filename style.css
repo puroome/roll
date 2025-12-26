@@ -36,7 +36,6 @@ body {
   display: flex; 
   flex-direction: column; 
   gap: 20px; 
-  
   width: 100%;
   max-width: 420px; 
   margin: 0 auto;   
@@ -69,25 +68,17 @@ body {
 .class-btn:active { background-color: #0056b3; }
 
 /* 학년별 버튼 색상 */
-.class-btn.grade-1 {
-  background-color: #ffc107; /* 노란색 */
-  color: #000;
-}
+.class-btn.grade-1 { background-color: #ffc107; color: #000; }
 .class-btn.grade-1:active { background-color: #e0a800; }
-
-.class-btn.grade-3 {
-  background-color: #dc3545; /* 붉은색 */
-  color: #fff;
-}
+.class-btn.grade-3 { background-color: #dc3545; color: #fff; }
 .class-btn.grade-3:active { background-color: #c82333; }
 
-/* [수정] 미확정 상태 (더 옅은 회색) */
+/* 미확정 상태 */
 .class-btn.gray-status {
-  background-color: #d1d5db !important; /* 옅은 회색 */
-  color: #555 !important; /* 배경이 밝으므로 글자는 어둡게 */
+  background-color: #d1d5db !important;
+  color: #555 !important;
   border: 1px solid #ced4da;
 }
-
 .class-btn.disabled {
   background-color: #e9ecef;
   color: #adb5bd;
@@ -116,16 +107,37 @@ body {
   width: 100%;
 }
 
-.home-center-btn {
-  background: transparent;
+/* [신규] 날짜 선택 컨트롤 스타일 */
+.date-control-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #fff;
   border: 1px solid #ddd;
-  border-radius: 50%;
-  width: 32px; height: 32px;
-  font-size: 18px;
+  border-radius: 6px;
+  padding: 0 8px;
+  height: 32px;
   cursor: pointer;
-  padding: 0;
-  display: flex; align-items: center; justify-content: center;
-  color: #555;
+}
+.date-display-label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hidden-date-input {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.home-center-btn {
+  background: transparent; border: 1px solid #ddd; border-radius: 50%;
+  width: 32px; height: 32px; font-size: 18px; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center; color: #555;
   flex-shrink: 0;
 }
 .home-center-btn:active { background-color: #f1f3f4; }
@@ -189,7 +201,6 @@ th { height: 30px; } td { height: 40px; }
 
 thead { position: sticky; top: 0; z-index: 100; }
 th { font-weight: bold; background-color: #f8f9fa; color: #444; position: sticky; top: 0; z-index: 50; border-bottom: 1px solid #ccc; }
-thead tr:nth-child(2) th { top: 30px; z-index: 50; }
 
 .col-no, tbody td:first-child {
   position: sticky; left: 0;
@@ -211,7 +222,7 @@ tbody td:nth-child(2):hover { background-color: #f1f3f4 !important; color: #007b
 thead th.col-name {
   background-color: #e2f1ff !important; color: #0056b3;
   cursor: pointer; transition: all 0.2s;
-  z-index: 150 !important; top: 0; height: 60px; 
+  z-index: 150 !important; top: 0; height: 40px; 
   white-space: normal !important; line-height: 1.2;
 }
 
@@ -219,16 +230,12 @@ thead th.col-name.save-active {
   background-color: #198754 !important; color: white;
   box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 }
-thead th.col-no { z-index: 150 !important; top: 0; height: 60px; background-color: #f8f9fa;}
+thead th.col-no { z-index: 150 !important; top: 0; height: 40px; background-color: #f8f9fa;}
 
-.highlight-header { background-color: #dbeafe !important; }
-.bg-date-1 { background-color: #f1f8ff; } 
-.bg-date-2 { background-color: #fffdf5; } 
-th.bg-date-1 { background-color: #e3f2fd; }
-th.bg-date-2 { background-color: #fff3e0; }
+.bg-period-1 { background-color: #f1f8ff; } 
+.bg-period-2 { background-color: #fffdf5; } 
 
-/* [추가] 확정된 날짜 스타일 */
-.confirmed-header { color: #d63384 !important; }
+/* 확정 상태 */
 .confirmed-col { background-color: #eee !important; pointer-events: none; opacity: 0.6; }
 
 .check-cell { cursor: pointer; line-height: 1.1; position: relative;}
@@ -283,16 +290,8 @@ th.bg-date-2 { background-color: #fff3e0; }
 
 /* 통계 화면용 */
 .stats-wrapper { 
-  flex: 1; 
-  overflow-y: auto; 
-  background: white; 
-  padding: 20px; 
-  
-  /* PC 대응 */
-  width: 100%;
-  max-width: 420px;
-  margin: 0 auto;
-  box-sizing: border-box;
+  flex: 1; overflow-y: auto; background: white; padding: 20px; 
+  width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box;
 }
 
 .stats-class-block { margin-bottom: 25px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
@@ -302,124 +301,43 @@ th.bg-date-2 { background-color: #fff3e0; }
 .stats-student-name { font-weight: bold; margin-bottom: 4px; color: #0056b3; }
 .stats-detail { color: #555; font-size: 13px; line-height: 1.5; padding-left: 10px; border-left: 3px solid #ddd; margin-top: 5px; }
 
-/* [추가] 통계 요약 박스 */
 .stats-summary-box {
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
-  font-size: 14px;
-  line-height: 1.6;
+  background-color: #f8f9fa; border: 1px solid #ddd; border-radius: 8px;
+  padding: 15px; margin-bottom: 20px; font-size: 14px; line-height: 1.6;
 }
-.stats-summary-row {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-.summary-total {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed #ccc;
-  font-weight: bold;
-  color: #007bff; /* 파란색 */
-  font-size: 16px;
-}
+.stats-summary-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.summary-total { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; font-weight: bold; color: #007bff; font-size: 16px; }
 
-/* 통계 화면 컨트롤 스타일 */
-#statsScreen .controls {
-  width: 100%;
-  max-width: 420px;
-  margin: 0 auto;
-  box-sizing: border-box;
-}
+#statsScreen .controls { width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; }
 
 .date-picker {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-family: inherit;
-  font-size: 14px;
-  background: white;
+  border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px;
+  font-family: inherit; font-size: 14px; background: white;
 }
 
 .stats-radio-container {
-  display: flex;
-  flex-direction: column; /* 세로 정렬 */
-  align-items: center;
-  gap: 8px;
-  background: #f8f9fa;
-  padding: 10px;
-  border-radius: 8px;
-  width: 100%;
-  box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: #f8f9fa; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box;
 }
 
-.radio-row {
-  display: flex;
-  gap: 10px;
-}
-
-.period-group {
-  display: none;
-  align-items: center;
-  gap: 5px;
-  width: 100%;
-  justify-content: center;
-}
-.period-separator {
-  color: #888;
-  font-weight: bold;
-}
+.radio-row { display: flex; gap: 10px; }
 
 .filter-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  padding: 5px 0;
-  max-height: 100px;
-  overflow-y: auto;
+  display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+  padding: 5px 0; max-height: 100px; overflow-y: auto;
 }
 
-.filter-tag {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.filter-tag input {
-  display: none; 
-}
-
+.filter-tag { display: inline-flex; align-items: center; cursor: pointer; user-select: none; }
+.filter-tag input { display: none; }
 .filter-tag span {
-  padding: 6px 12px;
-  border-radius: 20px;
-  background-color: #f1f3f4;
-  color: #555;
-  font-size: 13px;
-  font-weight: bold;
-  border: 1px solid transparent;
-  transition: all 0.2s;
+  padding: 6px 12px; border-radius: 20px; background-color: #f1f3f4;
+  color: #555; font-size: 13px; font-weight: bold;
+  border: 1px solid transparent; transition: all 0.2s;
 }
-
-.filter-tag input:checked + span {
-  background-color: #e7f1ff;
-  color: #007bff;
-  border-color: #007bff;
-}
+.filter-tag input:checked + span { background-color: #e7f1ff; color: #007bff; border-color: #007bff; }
 
 .action-btn-full {
-  width: 100%;
-  padding: 10px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: bold;
-  cursor: pointer;
+  width: 100%; padding: 10px; background-color: #007bff; color: white;
+  border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;
 }
 .action-btn-full:active { background-color: #0056b3; }
-
