@@ -34,7 +34,6 @@ let currentRenderedData = null;
 let currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 전역 함수 바인딩
   window.onSaveBtnClick = onSaveBtnClick;
   window.loadStudents = loadStudents;
   window.toggleReasonInput = toggleReasonInput;
@@ -64,6 +63,18 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnStatsMode').addEventListener('click', enterStatsMode);
   document.getElementById('btnBackToHome').addEventListener('click', () => goHome(false));
   document.getElementById('btnBackToHomeStats').addEventListener('click', () => history.back());
+
+  // [신규] 모달 바깥 영역 클릭 시 닫기
+  window.onclick = function(event) {
+    const studentModal = document.getElementById('studentModal');
+    if (event.target == studentModal) {
+      closeStudentModal();
+    }
+    const confirmModal = document.getElementById('confirmModal');
+    if (event.target == confirmModal) {
+      hideConfirmModal();
+    }
+  }
 
   window.addEventListener('popstate', () => {
     goHome(true);
@@ -237,7 +248,7 @@ function enterAttendanceMode(grade, cls) {
 }
 
 // =======================================================
-// [핵심] 학생 데이터 로드 및 렌더링 (일자별)
+// 데이터 로드 및 렌더링
 // =======================================================
 async function loadStudents() {
   pendingChanges = {};
@@ -720,7 +731,7 @@ function closeStudentModal() {
 }
 
 // =======================================================
-// [수정됨] 학생 상세 보기 팝업 함수 (전화/위치요청 추가)
+// [수정됨] 학생 상세 보기 팝업 함수 (버튼 및 로직 개선)
 // =======================================================
 function showStudentSummary(studentNo, studentName) {
   if (!currentRenderedData || !currentRenderedData.students) {
@@ -736,62 +747,54 @@ function showStudentSummary(studentNo, studentName) {
 
   const month = (activeDate.getMonth() + 1).toString();
   
-  // 1. 팝업 타이틀 설정
   const titleEl = document.getElementById('studentModalTitle');
   titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span>`;
   
-  // 2. [신규] 연락처 및 버튼 생성 UI
+  // 연락처 및 3단 버튼 생성
   let contactHtml = "";
   const phone = student.phone ? student.phone.replace(/[^0-9]/g, '') : ""; 
-  const locationUrl = "https://puroome.github.io/pin/";
   
   if (phone) {
-    const fmtPhone = phone.replace(/^(\d{2,3})(\d{3,4})(\d{4})$/, `$1-$2-$3`);
-    
-    // 문자 메시지 본문 (URL 포함)
-    const smsBody = `[위치확인 요청] 학생의 현재 위치를 확인해주세요.\n접속주소: ${locationUrl}`;
-    // iOS/Android 호환을 위해 ?body= 사용
+    // 1. 이름 파싱 (성 제외)
+    // 일반적으로 첫 글자는 성이라고 가정 (2글자 이상인 경우)
+    const shortName = studentName.length > 1 ? studentName.substring(1) : studentName;
+
+    // 2. 조사 판별 (받침 유무: (unicode - 0xAC00) % 28 > 0 이면 받침 있음)
+    // 마지막 글자의 유니코드 확인
+    const lastChar = shortName.charCodeAt(shortName.length - 1);
+    const hasBatchim = (lastChar - 0xAC00) % 28 > 0;
+    const suffix = hasBatchim ? "아" : "야";
+
+    // 3. 문자 내용 생성
+    const locationUrl = "https://puroome.github.io/pin/";
+    const smsBody = `${shortName}${suffix}, 선생님이야. 아래 주소에 들어가서 이름적고, 출석하기 버튼 누르면 돼.\n${locationUrl}`;
     const encodedBody = encodeURIComponent(smsBody);
 
+    // 4. 버튼 HTML 생성 (전화번호 텍스트 없이 버튼만 일렬 배치)
     contactHtml = `
-      <div style="background:#f8f9fa; padding:15px; border-radius:12px; margin-bottom:20px; text-align:center;">
-        <div style="font-size:18px; font-weight:bold; color:#333; margin-bottom:12px;">
-          📞 ${fmtPhone}
-        </div>
-        <div style="display:flex; gap:10px; justify-content:center;">
-          <a href="tel:${phone}" style="text-decoration:none; flex:1;">
-            <button style="width:100%; padding:10px; background:#0d6efd; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">
-              통화 하기
-            </button>
+      <div class="contact-btn-group">
+          <a href="tel:${phone}" class="contact-btn" style="background-color: #0d6efd;">
+             📞 통화
           </a>
-          
-          <a href="sms:${phone}?body=${encodedBody}" style="text-decoration:none; flex:1;">
-             <button style="width:100%; padding:10px; background:#198754; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">
-              📍 위치 요청
-            </button>
+          <a href="sms:${phone}" class="contact-btn" style="background-color: #198754;">
+             📩 문자
           </a>
-        </div>
-        <div style="margin-top:8px; font-size:11px; color:#888;">
-          * '위치 요청' 클릭 시 문자 메시지 앱으로 이동합니다.
-        </div>
+          <a href="sms:${phone}?body=${encodedBody}" class="contact-btn" style="background-color: #dc3545;">
+             📍 위치요청
+          </a>
       </div>
     `;
   } else {
-    contactHtml = `
-      <div style="background:#f8f9fa; padding:15px; border-radius:12px; margin-bottom:20px; text-align:center; color:#999;">
-        등록된 전화번호가 없습니다.
-      </div>
-    `;
+    // 전화번호가 없으면 버튼 영역 자체를 숨김 (아무것도 표시 안함)
+    contactHtml = "";
   }
 
-  // 3. 기존 출석 상세 내역 생성
   const sortedAttendance = (student.attendance || []).sort((a,b) => {
     return (parseInt(a.day) - parseInt(b.day)) || (parseInt(a.period) - parseInt(b.period));
   });
   
   const summaryHtml = generateSummaryHtml(sortedAttendance); 
 
-  // 4. 모달 바디에 주입
   document.getElementById('studentModalBody').innerHTML = contactHtml + summaryHtml;
   document.getElementById('studentModal').classList.add('show');
 }
@@ -850,7 +853,7 @@ function generateSummaryHtml(attendanceList) {
 }
 
 // =======================================================
-// [통계 기능]
+// [통계 기능] (기존 유지)
 // =======================================================
 async function enterStatsMode() {
   history.pushState({ mode: 'stats' }, '', '');
