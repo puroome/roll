@@ -135,11 +135,11 @@ thead th.col-name.save-active { background-color: #198754 !important; color: whi
 thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-color: #f8f9fa;}
 .confirmed-header { color: #d63384 !important; }
 
-/* ✅ [수정] 마감 시 투명도(opacity) 제거 -> 배경은 회색, 테두리는 선명하게 유지 */
+/* ✅ [수정] 마감 시 투명도 제거 -> 배경색을 진한 회색으로 변경하여 테두리 가시성 확보 */
 .confirmed-col { 
-  background-color: #eee !important; 
+  background-color: #e0e0e0 !important; 
   pointer-events: none; 
-  color: #999; /* 텍스트만 연하게 */
+  color: #777; 
 }
 
 .check-cell { cursor: pointer; line-height: 1.1; position: relative;}
