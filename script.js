@@ -16,7 +16,12 @@ const db = getDatabase(app);
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGOrVUl3r1fRjDrPXnG7uycNL0547aOrSdTiXLbG2ggooANum2hX4NFFg/exec";
 
 let globalData = {}; 
-const CURRENT_YEAR = new Date().getFullYear().toString();
+
+// ✅ [수정] 학년도 계산 로직 적용 (1,2월은 작년도를 가리킴)
+const nowForYear = new Date();
+const CURRENT_YEAR = (nowForYear.getMonth() + 1 <= 2) 
+    ? (nowForYear.getFullYear() - 1).toString() 
+    : nowForYear.getFullYear().toString();
 
 // [상태 변수]
 let activeDate = new Date(); 
@@ -64,7 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnBackToHome').addEventListener('click', () => goHome(false));
   document.getElementById('btnBackToHomeStats').addEventListener('click', () => history.back());
 
-  // [신규] 모달 바깥 영역 클릭 시 닫기
   window.onclick = function(event) {
     const studentModal = document.getElementById('studentModal');
     if (event.target == studentModal) {
@@ -748,7 +752,6 @@ function showStudentSummary(studentNo, studentName) {
   const month = (activeDate.getMonth() + 1).toString();
   
   const titleEl = document.getElementById('studentModalTitle');
-  // [수정 완료] 대괄호 삭제, 서브타이틀 클래스 삭제(폰트크기/색상 이름과 동일하게), 월 숫자 파란색 적용
   titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span> <span style="color:#007bff">${month}</span>월 출결사항`;
   
   // 연락처 및 3단 버튼 생성
@@ -766,7 +769,6 @@ function showStudentSummary(studentNo, studentName) {
     const smsBody = `${shortName}${suffix}, 선생님이야. 아래 주소에 들어가서 이름적고, 출석하기 버튼 누르면 돼.\n${locationUrl}`;
     const encodedBody = encodeURIComponent(smsBody);
 
-    // [수정] 파스텔톤 클래스 적용 및 '위치' 텍스트 변경
     contactHtml = `
       <div class="contact-btn-group">
           <a href="tel:${phone}" class="contact-btn btn-pastel-blue">
@@ -848,7 +850,7 @@ function generateSummaryHtml(attendanceList) {
 }
 
 // =======================================================
-// [통계 기능] (기존 유지)
+// [통계 기능] (수정됨: 학년도 데이터 조회 로직 적용)
 // =======================================================
 async function enterStatsMode() {
   history.pushState({ mode: 'stats' }, '', '');
@@ -933,7 +935,13 @@ async function runStatsSearch() {
     const d = new Date(dateStr);
     filterStartDate = d;
     filterEndDate = d;
-    targetMonthsToFetch.push({ year: d.getFullYear().toString(), month: (d.getMonth()+1).toString() });
+    
+    // ✅ [수정] 1,2월은 작년 학년도로 계산
+    let qMonth = d.getMonth() + 1;
+    let qYear = d.getFullYear();
+    if (qMonth <= 2) qYear -= 1; 
+
+    targetMonthsToFetch.push({ year: qYear.toString(), month: qMonth.toString() });
     
     const dayChar = getDayOfWeek(d);
     displayTitle = `${d.getMonth()+1}월 ${d.getDate()}일(${dayChar}) 통계`;
@@ -942,7 +950,14 @@ async function runStatsSearch() {
     const monthStr = document.getElementById('statsMonthInput').value; 
     if(!monthStr) { alert("월을 선택해주세요."); return; }
     const parts = monthStr.split('-');
-    targetMonthsToFetch.push({ year: parts[0], month: parseInt(parts[1]).toString() });
+    
+    let mYear = parseInt(parts[0]);
+    let mMonth = parseInt(parts[1]);
+    
+    // ✅ [수정] 1,2월은 작년 학년도로 계산
+    if (mMonth <= 2) mYear -= 1;
+
+    targetMonthsToFetch.push({ year: mYear.toString(), month: mMonth.toString() });
     displayTitle = `${parseInt(parts[1])}월 전체 통계`;
 
   } else if (mode === 'period') {
@@ -959,7 +974,12 @@ async function runStatsSearch() {
     const endLimit = new Date(filterEndDate.getFullYear(), filterEndDate.getMonth(), 1);
     
     while(curr <= endLimit) {
-        targetMonthsToFetch.push({ year: curr.getFullYear().toString(), month: (curr.getMonth()+1).toString() });
+        let qMonth = curr.getMonth() + 1;
+        let qYear = curr.getFullYear();
+        // ✅ [수정] 1,2월은 작년 학년도로 계산
+        if (qMonth <= 2) qYear -= 1;
+
+        targetMonthsToFetch.push({ year: qYear.toString(), month: qMonth.toString() });
         curr.setMonth(curr.getMonth() + 1);
     }
   }
@@ -1031,7 +1051,8 @@ async function runStatsSearch() {
         let validRecords = s.attendance.filter(a => {
             if (!a.value || a.value.trim() === "") return false;
 
-            const rYear = parseInt(res.year);
+            // ✅ [수정] 학년도 데이터를 실제 달력 날짜로 변환하여 비교
+            const rYear = getRealYear(res.year, res.month);
             const rMonth = parseInt(res.month);
             const rDay = parseInt(a.day);
             const rDate = new Date(rYear, rMonth - 1, rDay);
@@ -1061,7 +1082,8 @@ async function runStatsSearch() {
           }
 
           const recordsWithMeta = validRecords.map(r => {
-              const rYear = parseInt(res.year);
+              // ✅ [수정] 실제 연도 기반으로 요일 계산
+              const rYear = getRealYear(res.year, res.month);
               const rMonth = parseInt(res.month);
               const rDay = parseInt(r.day);
               const yoil = getDayOfWeek(new Date(rYear, rMonth-1, rDay));
@@ -1216,4 +1238,16 @@ function convertSymbolToText(symbol) {
   if (symbol === '○') return '병';
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
+}
+
+// ✅ [신규 함수] 학년도(SchoolYear)와 월(Month)을 입력받아
+// 실제 달력상의 연도(CalendarYear)를 반환하는 함수
+function getRealYear(schoolYear, month) {
+  const m = parseInt(month);
+  const y = parseInt(schoolYear);
+  // 1월, 2월 데이터는 실제로는 (학년도 + 1)년의 데이터임
+  if (m === 1 || m === 2) {
+    return y + 1;
+  }
+  return y;
 }
