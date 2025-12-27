@@ -134,7 +134,13 @@ thead th.col-name {
 thead th.col-name.save-active { background-color: #198754 !important; color: white; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); }
 thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-color: #f8f9fa;}
 .confirmed-header { color: #d63384 !important; }
-.confirmed-col { background-color: #eee !important; pointer-events: none; opacity: 0.6; }
+
+/* ✅ [수정] 마감 시 투명도(opacity) 제거 -> 배경은 회색, 테두리는 선명하게 유지 */
+.confirmed-col { 
+  background-color: #eee !important; 
+  pointer-events: none; 
+  color: #999; /* 텍스트만 연하게 */
+}
 
 .check-cell { cursor: pointer; line-height: 1.1; position: relative;}
 .multi-selecting { animation: blink-green-selecting 1s infinite ease-in-out !important; z-index: 10; }
