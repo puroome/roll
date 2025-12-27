@@ -1,4 +1,4 @@
-@charset "UTF-8";
+[cite_start][cite: 3] @charset "UTF-8";
 
 body { 
   font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', sans-serif !important;
@@ -172,7 +172,9 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
 .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 12px; color: #333; }
-.modal-sub-title { font-size: 13px; font-weight: normal; color: #555; margin-left: 4px; }
+/* [수정] 모달 서브 타이틀 스타일 수정 (크기 줄임 속성 제거) */
+.modal-sub-title { margin-left: 4px; } 
+
 .modal-body { font-size: 15px; margin-bottom: 24px; color: #666; line-height: 1.5; }
 .modal-footer { display: flex; gap: 10px; justify-content: center; }
 .modal-btn { flex: 1; padding: 10px 0; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; }
@@ -191,7 +193,7 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 /* 연락처 버튼 그룹 */
 .contact-btn-group {
   display: flex; gap: 6px; justify-content: center; margin: 0 auto 20px auto;
-  max-width: 280px; /* [수정] 너비 축소 */
+  max-width: 280px; 
 }
 .contact-btn {
   flex: 1; padding: 10px 0; font-size: 14px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer;
@@ -200,14 +202,14 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 }
 .contact-btn:active { opacity: 0.7; }
 
-/* [신규] 파스텔톤 버튼 색상 */
-.btn-pastel-blue { background-color: #e3f2fd; color: #1565c0; }   /* 연한 파랑 */
-.btn-pastel-green { background-color: #e8f5e9; color: #2e7d32; }  /* 연한 초록 */
-.btn-pastel-red { background-color: #ffebee; color: #c62828; }    /* 연한 빨강 */
+/* 파스텔톤 버튼 색상 */
+.btn-pastel-blue { background-color: #e3f2fd; color: #1565c0; }   
+.btn-pastel-green { background-color: #e8f5e9; color: #2e7d32; }  
+.btn-pastel-red { background-color: #ffebee; color: #c62828; }    
 
 .overscroll-y-none { overscroll-behavior-y: none; }
 
-/* 통계 스타일 (기존과 동일) */
+/* 통계 필터 및 버튼 스타일 */
 .stats-wrapper { flex: 1; overflow-y: auto; background: white; padding: 20px; width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; }
 .stats-class-block { margin-bottom: 25px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
 .stats-class-header { background: #f8f9fa; padding: 10px 15px; font-weight: bold; color: #333; border-bottom: 1px solid #eee; }
@@ -225,8 +227,15 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .period-group { display: none; align-items: center; gap: 5px; width: 100%; justify-content: center; }
 .period-separator { color: #888; font-weight: bold; }
 .filter-container { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 5px 0; max-height: 100px; overflow-y: auto; }
+
+/* [수정] 체크박스 숨김 강화 및 필터 버튼 스타일 */
 .filter-tag { display: inline-flex; align-items: center; cursor: pointer; user-select: none; }
+.filter-tag input { display: none !important; } /* 체크박스 확실히 숨김 */
 .filter-tag span { padding: 6px 12px; border-radius: 20px; background-color: #f1f3f4; color: #555; font-size: 13px; font-weight: bold; border: 1px solid transparent; transition: all 0.2s; }
 .filter-tag input:checked + span { background-color: #e7f1ff; color: #007bff; border-color: #007bff; }
+
+/* [신규] '전체' 버튼 전용 붉은 스타일 */
+.filter-all input:checked + span { background-color: #ffebee !important; color: #c62828 !important; border-color: #c62828 !important; }
+
 .action-btn-full { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
 .action-btn-full:active { background-color: #0056b3; }
