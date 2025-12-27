@@ -1288,8 +1288,21 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
   html += `<div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#555;">[ ${displayTitle} ]</div>`;
 
   if (mode === 'daily') {
-      const summary = calculateDailySummary(fullDayAbsentCounts);
-      if(summary) html += summary;
+      // ✅ [추가 로직] 모든 반이 마감되었는지 확인
+      let isAllConfirmedForSummary = true;
+      for (const cKey of sortedClassKeys) {
+          const unconf = unconfirmedInfo[cKey] || [];
+          if (unconf.length > 0) {
+              isAllConfirmedForSummary = false;
+              break;
+          }
+      }
+
+      // 모든 반이 마감되었을 때만 요약 통계 표시
+      if (isAllConfirmedForSummary) {
+          const summary = calculateDailySummary(fullDayAbsentCounts);
+          if(summary) html += summary;
+      }
   }
 
   // ✅ [수정 완료: 기능 5-2 All Clean Check]
