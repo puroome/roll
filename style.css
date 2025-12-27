@@ -226,7 +226,15 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .period-separator { color: #888; font-weight: bold; }
 .filter-container { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 5px 0; max-height: 100px; overflow-y: auto; }
 .filter-tag { display: inline-flex; align-items: center; cursor: pointer; user-select: none; }
+
+/* [수정] 체크박스 숨김 */
+.filter-tag input { display: none; }
+
 .filter-tag span { padding: 6px 12px; border-radius: 20px; background-color: #f1f3f4; color: #555; font-size: 13px; font-weight: bold; border: 1px solid transparent; transition: all 0.2s; }
 .filter-tag input:checked + span { background-color: #e7f1ff; color: #007bff; border-color: #007bff; }
+
+/* [신규] '전체' 버튼(#chkAll) 선택 시 (옅은 붉은색 계열) */
+.filter-tag input#chkAll:checked + span { background-color: #ffebee; color: #c62828; border-color: #c62828; }
+
 .action-btn-full { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
 .action-btn-full:active { background-color: #0056b3; }
