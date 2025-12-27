@@ -145,8 +145,9 @@ function setupDatePicker() {
     const selectedDate = new Date(e.target.value);
     if (!isValidSchoolDay(selectedDate)) {
         showMessageModal("수업이 없는 날입니다.\n(출석부 데이터가 존재하지 않습니다)");
-        e.target.value = ""; // 초기화
-        updateDateLabel();   // 라벨도 원래 날짜로 복구
+        // e.target.value는 자동으로 바뀌지 않으므로, 유효한 날짜로 돌리거나 초기화해야 함
+        // 여기서는 '원래 보던 날짜'로 되돌림
+        updateDateLabel();
         return;
     }
 
@@ -161,8 +162,6 @@ function isValidSchoolDay(dateObj) {
     const year = CURRENT_YEAR;
     if (!globalData[year] || !globalData[year].validDays) return true; // 데이터 없으면 패스(오류방지)
 
-    // 1,2월은 학년도상 +1년이지만, validDays 키는 학년도 기준이므로
-    // parseSheetData에서 저장할 때 month 키는 그대로 사용됨 (1,2,3...12)
     const m = (dateObj.getMonth() + 1).toString();
     const d = dateObj.getDate();
     
@@ -170,6 +169,22 @@ function isValidSchoolDay(dateObj) {
     if (!validList) return false; // 해당 월 데이터 없음
 
     return validList.includes(d);
+}
+
+// ✅ [신규] 가장 가까운 과거 수업일을 찾는 함수
+function findMostRecentSchoolDay(startDate) {
+    // 최대 60일까지 과거로 탐색
+    const limit = 60;
+    let checkDate = new Date(startDate);
+    
+    for (let i = 0; i < limit; i++) {
+        if (isValidSchoolDay(checkDate)) {
+            return checkDate;
+        }
+        checkDate.setDate(checkDate.getDate() - 1);
+    }
+    // 못 찾으면 그냥 오늘 날짜 반환 (오류 방지)
+    return startDate;
 }
 
 
@@ -294,7 +309,11 @@ async function renderHomeScreenClassButtons() {
 function enterAttendanceMode(grade, cls) {
   currentSelectedClass = `${grade}-${cls}`;
   
-  activeDate = new Date();
+  // ✅ [수정 완료: 기능 2] 입장 시 자동으로 '가장 최근 수업일' 찾기
+  // 오늘 날짜를 기준으로 과거를 탐색해서, 수업이 있는 날짜로 activeDate를 세팅함.
+  // 이렇게 하면 "데이터 없음" 메시지를 볼 필요가 없음.
+  activeDate = findMostRecentSchoolDay(new Date());
+  
   updateDateLabel();
 
   history.pushState({ mode: 'attendance' }, '', '');
@@ -1122,27 +1141,15 @@ async function runStatsSearch() {
     // 1. 초기화
     targetClassKeys.forEach(k => unconfirmedInfo[k] = []);
 
-    // 2. 검색 범위 내의 "유효 날짜(Valid Date)" 목록 생성 (Code.gs에서 받은 validDays 활용)
-    //    주의: validDays는 학년도(year) 아래에 있음.
-    //    filterStartDate ~ filterEndDate 사이의 날짜이면서 && <= today 인 날짜만 체크 대상
-    
-    // 간단하게, results를 순회하며 날짜 체크. 
-    // 하지만 results는 데이터가 있는 달만 가져옴.
-    // 더 정확히는 globalData의 validDays를 이용해 "검사해야 할 날짜"를 먼저 정의해야 함.
-    
+    // 2. 검색 범위 내의 "유효 날짜(Valid Date)" 목록 생성
     const yearKey = CURRENT_YEAR;
     const validDaysMap = globalData[yearKey] ? globalData[yearKey].validDays : {};
 
-    // 체크해야 할 날짜 리스트 만들기 (month -> [days])
-    // filterStartDate ~ Math.min(filterEndDate, today)
+    // 체크해야 할 날짜 리스트 만들기
     const checkEndDate = (filterEndDate > today) ? today : filterEndDate;
     const checkStartDate = filterStartDate;
 
-    // 순회하며 체크 대상 날짜 수집
-    // 날짜 순회는 성능상 비효율적일 수 있으나, 60일 제한 등이 있으므로 허용 범위.
-    // 단, 여기서는 validDaysMap을 순회하는 것이 빠름.
-    
-    const requiredDates = []; // { m: "3", d: 5, dateObj: ... }
+    const requiredDates = []; // { m: "3", d: 5 }
     
     if (validDaysMap) {
         let loopDate = new Date(checkStartDate);
@@ -1162,11 +1169,6 @@ async function runStatsSearch() {
     }
 
     // 3. 각 반별로 확인
-    // results에는 해당 반의 confirmations 정보가 있음.
-    // results 구조: [ { year, month, classKey, val: { confirmations: {...} } }, ... ]
-    
-    // 빠른 조회를 위해 results를 Map으로 변환
-    // map[classKey][month] = classData
     const classDataMap = {};
     results.forEach(res => {
         if (!classDataMap[res.classKey]) classDataMap[res.classKey] = {};
@@ -1285,9 +1287,6 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
   
   html += `<div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#555;">[ ${displayTitle} ]</div>`;
 
-  // ✅ [수정] 일별 통계 상단 요약은 "모든 반이 마감되었을 때"만 띄울 것인가? 
-  // 요청사항에는 없지만, 일별인 경우 출석율 보여주는 기능은 유지하되 조건은 유연하게.
-  // 여기서는 일단 유지.
   if (mode === 'daily') {
       const summary = calculateDailySummary(fullDayAbsentCounts);
       if(summary) html += summary;
@@ -1309,6 +1308,7 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
   // 데이터가 아예 없는 경우(미래 등)는 위에서 걸러졌거나 hasRangeData로 처리됨.
   // 만약 조회 기간 내에 유효 데이터가 있지만, 모두 출석하고 모두 마감했다면:
   if (hasRangeData && isAllClean) {
+      // ✅ [수정 완료: 기능 3] 문구 통일
       html += `<div style="padding:40px; text-align:center; color:#888;">특이사항(결석 등)이 없습니다.</div>`;
       container.innerHTML = html;
       return;
@@ -1324,24 +1324,60 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
     if (notConfirmedList.length === 0) {
         badgeHtml = `<span style="font-size:12px; color:green; margin-left:8px;">[마감 완료]</span>`;
     } else {
-        // 미마감 내역 텍스트 생성
-        // 예: 11월 3/4일, 12월 1일 마감 전
         badgeHtml = `<span style="font-size:12px; color:red; margin-left:8px;">[마감 전]</span>`;
-        
-        // 월별 그룹핑
-        const groupByMonth = {};
-        notConfirmedList.forEach(item => {
-            if (!groupByMonth[item.month]) groupByMonth[item.month] = [];
-            groupByMonth[item.month].push(item.day);
-        });
-        
-        const parts = [];
-        Object.keys(groupByMonth).sort((a,b)=>Number(a)-Number(b)).forEach(m => {
-            const daysStr = groupByMonth[m].sort((a,b)=>a-b).join('/');
-            parts.push(`${m}월 ${daysStr}일`);
-        });
-        
-        unconfirmedText = `<span style="font-size:12px; color:red; margin-left:5px;">${parts.join(', ')} 마감 전</span>`;
+
+        // ✅ [수정 완료] 일별 조회 시 텍스트 제거, 월별/기간만 텍스트 표시
+        if (mode !== 'daily') {
+            // 월별 그룹핑 및 연속 날짜 스마트 요약
+            // 1. 월별로 나누기
+            const groupByMonth = {};
+            notConfirmedList.forEach(item => {
+                if (!groupByMonth[item.month]) groupByMonth[item.month] = [];
+                groupByMonth[item.month].push(item.day);
+            });
+            
+            const parts = [];
+            const yearKey = CURRENT_YEAR;
+            const validDaysMap = globalData[yearKey] ? globalData[yearKey].validDays : {};
+
+            Object.keys(groupByMonth).sort((a,b)=>Number(a)-Number(b)).forEach(m => {
+                const days = groupByMonth[m].sort((a,b)=>a-b);
+                const validList = validDaysMap[m] || [];
+                
+                // 연속성 체크 로직 (Smart Grouping)
+                // validList에서 days[i]와 days[i+1] 사이에 다른 valid day가 없으면 연속으로 판단
+                
+                let ranges = [];
+                if (days.length > 0) {
+                    let start = days[0];
+                    let end = days[0];
+
+                    for (let i = 1; i < days.length; i++) {
+                        const current = days[i];
+                        
+                        // prev(end)와 current 사이에 valid day가 있는지 확인
+                        const validIdxStart = validList.indexOf(end);
+                        const validIdxEnd = validList.indexOf(current);
+                        
+                        // 인덱스가 연속되면 (즉, validList 상에서 바로 옆이면) -> 연속된 수업일
+                        if (validIdxStart !== -1 && validIdxEnd !== -1 && (validIdxEnd - validIdxStart === 1)) {
+                            end = current;
+                        } else {
+                            // 끊김 -> 저장 후 새로 시작
+                            ranges.push(start === end ? `${start}` : `${start}~${end}`);
+                            start = current;
+                            end = current;
+                        }
+                    }
+                    ranges.push(start === end ? `${start}` : `${start}~${end}`);
+                }
+                
+                parts.push(`${m}월 ${ranges.join(', ')}일`);
+            });
+            
+            // "마감 전" 텍스트 중복 제거
+            unconfirmedText = `<span style="font-size:12px; color:red; margin-left:5px;">${parts.join(', ')}</span>`;
+        }
     }
 
     const studentsMap = aggregatedData[classKey];
