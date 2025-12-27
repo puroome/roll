@@ -1027,10 +1027,9 @@ async function runStatsSearch() {
   
   window.currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
   let fullDayAbsentCounts = { '1': 0, '2': 0, '3': 0 }; 
-  // ✅ [수정] 데이터 존재 여부를 확인하기 위한 플래그
-  let hasActualData = false;
-  // ✅ [수정] 일별 조회 시 해당 날짜 데이터 존재 여부 플래그
-  let hasDateSpecificData = false; 
+  
+  // ✅ [수정] 조회 기간 내에 실제 출석부 컬럼(날짜)이 존재하는지 확인하는 플래그
+  let hasRangeData = false;
   
   try {
     const results = [];
@@ -1045,8 +1044,6 @@ async function runStatsSearch() {
         
         targetClassKeys.forEach(classKey => {
             if (monthData[classKey]) {
-                // 데이터가 하나라도 발견되면 true 설정
-                hasActualData = true;
                 monthResults.push({ 
                     year: tm.year, 
                     month: tm.month, 
@@ -1095,28 +1092,31 @@ async function runStatsSearch() {
       students.forEach(s => {
         if (!s.attendance) return;
 
-        // ✅ [추가] 일별 조회 시, 학생에게 해당 날짜 데이터가 있는지 확인
-        if (mode === 'daily') {
-           const targetDay = filterStartDate.getDate();
-           const hasRecordToday = s.attendance.some(a => a.day == targetDay);
-           if (hasRecordToday) hasDateSpecificData = true;
+        // ✅ [수정] 결석(특이사항) 필터링 전, 해당 기간에 출석 데이터 자체가 있는지 먼저 확인
+        const rYear = getRealYear(res.year, res.month);
+        const rMonth = parseInt(res.month);
+
+        // 기간 체크 로직 (함수화 대신 인라인 처리하여 성능 확보)
+        const checkRange = (att) => {
+             if (mode === 'monthly') return true; 
+
+             const rDay = parseInt(att.day);
+             const rDate = new Date(rYear, rMonth - 1, rDay);
+             const fStart = new Date(filterStartDate); fStart.setHours(0,0,0,0);
+             const fEnd = new Date(filterEndDate); fEnd.setHours(0,0,0,0);
+             return rDate >= fStart && rDate <= fEnd;
+        };
+
+        // 이 학생의 출석 기록 중, 검색 기간에 포함되는 날짜가 하나라도 있는지 확인
+        if (!hasRangeData) {
+            const hasDataInPeriod = s.attendance.some(a => checkRange(a));
+            if (hasDataInPeriod) hasRangeData = true;
         }
 
+        // 실제 특이사항(결석 등) 필터링
         let validRecords = s.attendance.filter(a => {
             if (!a.value || a.value.trim() === "") return false;
-
-            // ✅ [수정] 학년도 데이터를 실제 달력 날짜로 변환하여 비교
-            const rYear = getRealYear(res.year, res.month);
-            const rMonth = parseInt(res.month);
-            const rDay = parseInt(a.day);
-            const rDate = new Date(rYear, rMonth - 1, rDay);
-
-            if (mode === 'daily' || mode === 'period') {
-                const fStart = new Date(filterStartDate); fStart.setHours(0,0,0,0);
-                const fEnd = new Date(filterEndDate); fEnd.setHours(0,0,0,0);
-                return rDate >= fStart && rDate <= fEnd;
-            }
-            return true; 
+            return checkRange(a);
         });
 
         if (validRecords.length > 0) {
@@ -1136,9 +1136,6 @@ async function runStatsSearch() {
           }
 
           const recordsWithMeta = validRecords.map(r => {
-              // ✅ [수정] 실제 연도 기반으로 요일 계산
-              const rYear = getRealYear(res.year, res.month);
-              const rMonth = parseInt(res.month);
               const rDay = parseInt(r.day);
               const yoil = getDayOfWeek(new Date(rYear, rMonth-1, rDay));
               const totalP = s.attendance.filter(a => a.day == r.day).length;
@@ -1154,7 +1151,7 @@ async function runStatsSearch() {
       });
     });
 
-    renderStatsResult(aggregated, targetClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts, hasActualData, hasDateSpecificData);
+    renderStatsResult(aggregated, targetClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts, hasRangeData);
 
   } catch (e) {
     console.error(e);
@@ -1162,7 +1159,7 @@ async function runStatsSearch() {
   }
 }
 
-function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts, hasActualData, hasDateSpecificData) {
+function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts, hasRangeData) {
   const container = document.getElementById('statsContainer');
   let html = "";
   
@@ -1196,12 +1193,12 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
     html += `</div>`;
   });
 
-  // ✅ [수정] 데이터 없음 vs 특이사항 없음 구분 표시
-  if (!hasActualData) {
-    html += `<div style="padding:20px; text-align:center; color:#888;">해당 기간의 자료가 없습니다.</div>`;
-  } else if (mode === 'daily' && !hasDateSpecificData) {
-    // 일별 조회인데 해당 날짜 데이터가 없는 경우
-    html += `<div style="padding:20px; text-align:center; color:#888;">해당 날짜의 자료가 없습니다.</div>`;
+  // ✅ [수정] 조회 범위 내 데이터 존재 여부에 따른 메시지 분리
+  if (!hasRangeData) {
+    const msg = (mode === 'daily') 
+        ? "해당 날짜의 자료가 없습니다." 
+        : "해당 기간의 자료가 없습니다.";
+    html += `<div style="padding:20px; text-align:center; color:#888;">${msg}</div>`;
   } else if (!hasAnyAbsenceData) {
     html += `<div style="padding:20px; text-align:center; color:#888;">해당 기간에 특이사항(결석 등)이 없습니다.</div>`;
   }
