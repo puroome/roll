@@ -19,8 +19,8 @@ let globalData = {};
 const CURRENT_YEAR = new Date().getFullYear().toString();
 
 // [상태 변수]
-let activeDate = new Date(); // 현재 선택된 날짜 (Date 객체)
-let currentSelectedClass = null; // "1-1" 형태
+let activeDate = new Date(); 
+let currentSelectedClass = null; 
 let isMultiMode = false;
 let selectedCells = new Set();
 let dragStartAction = null;
@@ -30,9 +30,7 @@ let pendingChanges = {};
 let lastTouchTime = 0;
 
 let pendingNavigation = null;
-let currentRenderedData = null; // 현재 로드된 전체 데이터(월)
-
-// [통계]
+let currentRenderedData = null; 
 let currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -46,21 +44,16 @@ document.addEventListener('DOMContentLoaded', () => {
   window.toggleDateConfirmation = toggleDateConfirmation;
   window.showStudentSummary = showStudentSummary;
   
-  // 날짜 선택기 초기화
   setupDatePicker();
 
-  // 모달 버튼
   document.getElementById('modalCancelBtn').addEventListener('click', hideConfirmModal);
   document.getElementById('modalConfirmBtn').addEventListener('click', executeSave);
   
-  // 라디오 버튼 (출석 유형)
   const radios = document.getElementsByName('attType');
   radios.forEach(r => r.addEventListener('change', toggleReasonInput));
 
-  // 우클릭 방지
   document.addEventListener('contextmenu', event => event.preventDefault());
   
-  // 페이지 이탈 방지
   window.addEventListener('beforeunload', function (e) {
     if (Object.keys(pendingChanges).length > 0) {
       e.preventDefault();
@@ -68,12 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 버튼 이벤트
   document.getElementById('btnStatsMode').addEventListener('click', enterStatsMode);
   document.getElementById('btnBackToHome').addEventListener('click', () => goHome(false));
   document.getElementById('btnBackToHomeStats').addEventListener('click', () => history.back());
 
-  // 뒤로가기 처리
   window.addEventListener('popstate', () => {
     goHome(true);
   });
@@ -83,33 +74,28 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =======================================================
-// [신규] 날짜 선택기 설정
+// [날짜 선택기]
 // =======================================================
 function setupDatePicker() {
   const dateInput = document.getElementById('mainDatePicker');
   const btnTrigger = document.getElementById('btnDateTrigger');
   
-  // 초기값: 오늘
   activeDate = new Date();
   updateDateLabel();
 
-  // 버튼 클릭 시 숨겨진 date input 열기
   btnTrigger.addEventListener('click', () => {
     try {
       dateInput.showPicker();
     } catch (e) {
-      dateInput.focus(); // fallback
+      dateInput.focus();
     }
   });
 
-  // 날짜 변경 시
   dateInput.addEventListener('change', (e) => {
     if (!e.target.value) return;
     
-    // 저장되지 않은 변경사항 체크
     if (Object.keys(pendingChanges).length > 0) {
       if(!confirm("저장하지 않은 데이터가 있습니다. 무시하고 이동합니까?")) {
-        // 원래 날짜로 복구
         updateDateLabel(); 
         return;
       }
@@ -119,7 +105,7 @@ function setupDatePicker() {
 
     activeDate = new Date(e.target.value);
     updateDateLabel();
-    loadStudents(); // 데이터 다시 로드
+    loadStudents(); 
   });
 }
 
@@ -127,7 +113,6 @@ function updateDateLabel() {
   const dateInput = document.getElementById('mainDatePicker');
   const label = document.getElementById('dateDisplayLabel');
   
-  // YYYY-MM-DD 포맷
   const yyyy = activeDate.getFullYear();
   const mm = String(activeDate.getMonth() + 1).padStart(2, '0');
   const dd = String(activeDate.getDate()).padStart(2, '0');
@@ -149,7 +134,7 @@ function goHome(fromHistory = false) {
     updateSaveButtonUI();
   }
   switchView('homeScreen');
-  renderHomeScreenClassButtons(); // 상태 업데이트
+  renderHomeScreenClassButtons(); 
 }
 
 function switchView(viewId) {
@@ -170,7 +155,6 @@ async function fetchInitDataFromFirebase() {
   }
 }
 
-// 홈 화면: 반 버튼 렌더링 (오늘 날짜 확정 여부 반영)
 async function renderHomeScreenClassButtons() {
   const container = document.getElementById('classButtonContainer');
   container.innerHTML = "<div style='grid-column:1/-1; text-align:center; color:#888;'>출결 현황 확인 중...</div>";
@@ -181,14 +165,12 @@ async function renderHomeScreenClassButtons() {
     return;
   }
 
-  // 오늘 날짜 기준 데이터 조회
   const today = new Date();
   const month = (today.getMonth() + 1).toString();
   const day = today.getDate().toString();
   
   let monthData = {};
   
-  // 이번 달 전체 데이터 가져와서 오늘 확정 여부 확인
   try {
     const path = `attendance/${year}/${month}`;
     const snapshot = await get(child(ref(db), path));
@@ -223,15 +205,14 @@ async function renderHomeScreenClassButtons() {
       if (isActive) {
         btn.className = 'class-btn';
         
-        // [확정 상태 확인]
         const classKey = `${g}-${c}`;
         const classData = monthData[classKey];
         const isConfirmedToday = classData && classData.confirmations && classData.confirmations[day];
 
         if (isConfirmedToday) {
-            btn.classList.add('grade-1'); // 노란색 (확정)
+            btn.classList.add('grade-1'); 
         } else {
-            btn.classList.add('gray-status'); // 회색 (미확정)
+            btn.classList.add('gray-status'); 
         }
 
         btn.onclick = () => enterAttendanceMode(g, c);
@@ -294,7 +275,6 @@ async function loadStudents() {
   }
 }
 
-// [수정] 테이블 렌더링 (colgroup 추가로 너비 강제 고정)
 function renderTable(data) {
   if (!data.confirmations) data.confirmations = {};
   
@@ -312,7 +292,6 @@ function renderTable(data) {
   const targetDay = activeDate.getDate();
   const targetDayStr = targetDay.toString();
   
-  // 확정 여부
   const isConfirmed = data.confirmations[targetDayStr] === true;
   
   const sampleStudent = data.students[0];
@@ -323,30 +302,20 @@ function renderTable(data) {
     return;
   }
 
-  // 교시 정렬
   dayRecords.sort((a,b) => parseInt(a.period) - parseInt(b.period));
   
-  // ===============================================
-  // [핵심] 최소 너비 계산 (반응형 대응)
-  // 화면이 아무리 작아도 체크박스 하나당 35px은 확보하도록 설정
-  // ===============================================
-  const FIXED_WIDTH_NO = 30;   // 번호 너비
-  const FIXED_WIDTH_NAME = 55; // 이름 너비
-  const MIN_CELL_WIDTH = 35;   // 출석 칸 최소 너비
+  const FIXED_WIDTH_NO = 30;   
+  const FIXED_WIDTH_NAME = 55; 
+  const MIN_CELL_WIDTH = 35;   
   
   const totalCols = dayRecords.length;
   const minTableWidth = FIXED_WIDTH_NO + FIXED_WIDTH_NAME + (totalCols * MIN_CELL_WIDTH);
 
-  // 테이블 생성
-  // min-width를 적용하여, 화면이 너무 좁으면 가로 스크롤 생성
   let html = `<table style="min-width: ${minTableWidth}px;">`;
 
-  // [중요] colgroup을 사용하여 너비 강제 할당
-  // 번호, 이름은 고정(width), 나머지는 비율(auto)이지만 min-width 덕분에 찌그러지지 않음
   html += '<colgroup>';
   html += `<col style="width: ${FIXED_WIDTH_NO}px;">`;
   html += `<col style="width: ${FIXED_WIDTH_NAME}px;">`;
-  // 나머지 컬럼은 너비를 지정하지 않음 -> 남은 공간 등분 (table-layout: fixed 특성)
   for(let i=0; i<totalCols; i++) {
     html += '<col>'; 
   }
@@ -357,7 +326,6 @@ function renderTable(data) {
   const dayOfWeek = getDayOfWeek(activeDate);
   const dateLabel = `${activeDate.getMonth()+1}/${targetDay}(${dayOfWeek})`;
 
-  // [마감(확정) UI]
   const checkedAttr = isConfirmed ? 'checked' : '';
   const headerClass = isConfirmed ? 'confirmed-header' : '';
   const statusText = isConfirmed ? '마감됨' : '마감하기';
@@ -384,7 +352,6 @@ function renderTable(data) {
   });
   html += '</tr></thead><tbody>';
 
-  // 바디: 학생별 Row
   data.students.forEach(std => {
     html += '<tr>';
     html += `<td>${std.no}</td>`;
@@ -421,7 +388,6 @@ async function toggleDateConfirmation(dayStr) {
   if (!currentRenderedData.confirmations) currentRenderedData.confirmations = {};
   currentRenderedData.confirmations[dayStr] = newStatus;
 
-  // 1. Firebase 업데이트
   const year = CURRENT_YEAR;
   const month = (activeDate.getMonth() + 1).toString();
   const [grade, cls] = currentSelectedClass.split('-');
@@ -430,7 +396,6 @@ async function toggleDateConfirmation(dayStr) {
   try {
     await update(ref(db, path), { [dayStr]: newStatus });
     
-    // UI 즉시 반영
     const header = document.querySelector('.header-day');
     const cells = document.querySelectorAll('.check-cell');
     const labelSpan = checkbox.nextElementSibling;
@@ -444,13 +409,12 @@ async function toggleDateConfirmation(dayStr) {
       cells.forEach(c => c.classList.remove('confirmed-col'));
     }
     
-    // 2. Google 시트 색상 동기화
     syncColorToGoogleSheet(newStatus);
     showToast(newStatus ? "마감(확정) 되었습니다." : "마감 해제되었습니다.");
 
   } catch (e) {
     alert("오류 발생: " + e.message);
-    checkbox.checked = !newStatus; // 롤백
+    checkbox.checked = !newStatus; 
   }
 }
 
@@ -756,10 +720,9 @@ function closeStudentModal() {
 }
 
 // =======================================================
-// [복구됨] 학생 상세 보기 팝업 함수
+// [수정됨] 학생 상세 보기 팝업 함수 (전화/위치요청 추가)
 // =======================================================
 function showStudentSummary(studentNo, studentName) {
-  // 현재 로드된 데이터(currentRenderedData)에 이번 달 정보가 이미 다 있음
   if (!currentRenderedData || !currentRenderedData.students) {
      alert("데이터가 로드되지 않았습니다.");
      return;
@@ -772,25 +735,76 @@ function showStudentSummary(studentNo, studentName) {
   }
 
   const month = (activeDate.getMonth() + 1).toString();
-  document.getElementById('studentModalTitle').innerText = `${studentName} (${month}월 출결)`;
   
-  // 교시별 정렬 (Day -> Period)
+  // 1. 팝업 타이틀 설정
+  const titleEl = document.getElementById('studentModalTitle');
+  titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span>`;
+  
+  // 2. [신규] 연락처 및 버튼 생성 UI
+  let contactHtml = "";
+  const phone = student.phone ? student.phone.replace(/[^0-9]/g, '') : ""; 
+  const locationUrl = "https://puroome.github.io/pin/";
+  
+  if (phone) {
+    const fmtPhone = phone.replace(/^(\d{2,3})(\d{3,4})(\d{4})$/, `$1-$2-$3`);
+    
+    // 문자 메시지 본문 (URL 포함)
+    const smsBody = `[위치확인 요청] 학생의 현재 위치를 확인해주세요.\n접속주소: ${locationUrl}`;
+    // iOS/Android 호환을 위해 ?body= 사용
+    const encodedBody = encodeURIComponent(smsBody);
+
+    contactHtml = `
+      <div style="background:#f8f9fa; padding:15px; border-radius:12px; margin-bottom:20px; text-align:center;">
+        <div style="font-size:18px; font-weight:bold; color:#333; margin-bottom:12px;">
+          📞 ${fmtPhone}
+        </div>
+        <div style="display:flex; gap:10px; justify-content:center;">
+          <a href="tel:${phone}" style="text-decoration:none; flex:1;">
+            <button style="width:100%; padding:10px; background:#0d6efd; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">
+              통화 하기
+            </button>
+          </a>
+          
+          <a href="sms:${phone}?body=${encodedBody}" style="text-decoration:none; flex:1;">
+             <button style="width:100%; padding:10px; background:#198754; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">
+              📍 위치 요청
+            </button>
+          </a>
+        </div>
+        <div style="margin-top:8px; font-size:11px; color:#888;">
+          * '위치 요청' 클릭 시 문자 메시지 앱으로 이동합니다.
+        </div>
+      </div>
+    `;
+  } else {
+    contactHtml = `
+      <div style="background:#f8f9fa; padding:15px; border-radius:12px; margin-bottom:20px; text-align:center; color:#999;">
+        등록된 전화번호가 없습니다.
+      </div>
+    `;
+  }
+
+  // 3. 기존 출석 상세 내역 생성
   const sortedAttendance = (student.attendance || []).sort((a,b) => {
     return (parseInt(a.day) - parseInt(b.day)) || (parseInt(a.period) - parseInt(b.period));
   });
+  
+  const summaryHtml = generateSummaryHtml(sortedAttendance); 
 
-  renderStudentMonthlySummary(sortedAttendance);
+  // 4. 모달 바디에 주입
+  document.getElementById('studentModalBody').innerHTML = contactHtml + summaryHtml;
   document.getElementById('studentModal').classList.add('show');
 }
 
-function renderStudentMonthlySummary(attendanceList) {
+// (보조 함수) 출석 내역 HTML 생성기
+function generateSummaryHtml(attendanceList) {
   const dayGroups = {};
   attendanceList.forEach(att => {
     if (!dayGroups[att.day]) dayGroups[att.day] = [];
     dayGroups[att.day].push(att);
   });
   
-  let contentHtml = "";
+  let html = "<div style='text-align:left;'>";
   const days = Object.keys(dayGroups).sort((a, b) => Number(a) - Number(b));
   let hasData = false;
   
@@ -804,12 +818,12 @@ function renderStudentMonthlySummary(attendanceList) {
     const firstVal = absents[0].value;
     const isAllSame = absents.every(r => r.value === firstVal);
     
-    contentHtml += `<div style="margin-bottom: 8px; font-size:15px; padding-bottom:5px; border-bottom:1px dashed #eee;">• <b>${day}일</b> : `;
+    html += `<div style="margin-bottom: 8px; font-size:15px; padding-bottom:5px; border-bottom:1px dashed #eee;">• <b>${day}일</b> : `;
     
     if (isFullDay && isAllSame) {
       const { typeText, reason } = parseValueWithText(firstVal);
-      contentHtml += `<span style="font-weight:bold; color:#d63384;">${typeText}결석</span>`;
-      if (reason) contentHtml += `, ${reason}`;
+      html += `<span style="font-weight:bold; color:#d63384;">${typeText}결석</span>`;
+      if (reason) html += `, ${reason}`;
     } else {
       const reasonGroups = {}; 
       absents.forEach(a => {
@@ -825,13 +839,14 @@ function renderStudentMonthlySummary(attendanceList) {
         text += `)`;
         parts.push(text);
       }
-      contentHtml += parts.join(', ');
+      html += parts.join(', ');
     }
-    contentHtml += `</div>`;
+    html += `</div>`;
   });
   
-  if (!hasData) contentHtml = "<div style='text-align:center; color:#999; padding:30px;'>이번 달 특이사항 없음</div>";
-  document.getElementById('studentModalBody').innerHTML = contentHtml;
+  if (!hasData) html += "<div style='text-align:center; color:#999; padding:20px;'>이번 달 특이사항 없음</div>";
+  html += "</div>";
+  return html;
 }
 
 // =======================================================
@@ -971,7 +986,7 @@ async function runStatsSearch() {
                     year: tm.year, 
                     month: tm.month, 
                     classKey, 
-                    val: monthData[classKey] // 각 반의 데이터 (여기에 confirmations가 들어있음)
+                    val: monthData[classKey] 
                 });
             }
         });
@@ -985,13 +1000,11 @@ async function runStatsSearch() {
     const finalClassSet = new Set();
     let isAllConfirmed = true; 
 
-    // [수정된 부분] 확인 로직
     results.forEach(res => {
          if (!res.val) return;
 
          if (mode === 'daily') {
              const dayStr = filterStartDate.getDate().toString();
-             // [핵심 수정] res.val (반 데이터) 안의 confirmations 확인
              const isConfirmedToday = res.val.confirmations && res.val.confirmations[dayStr];
              if (!isConfirmedToday) isAllConfirmed = false;
          } else {
@@ -1206,5 +1219,3 @@ function convertSymbolToText(symbol) {
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
 }
-
-
