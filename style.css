@@ -172,13 +172,14 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
 .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 12px; color: #333; }
+.modal-sub-title { font-size: 13px; font-weight: normal; color: #555; margin-left: 4px; }
 .modal-body { font-size: 15px; margin-bottom: 24px; color: #666; line-height: 1.5; }
 .modal-footer { display: flex; gap: 10px; justify-content: center; }
 .modal-btn { flex: 1; padding: 10px 0; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; }
 .modal-btn.cancel { background: #f1f3f4; color: #333; }
 .modal-btn.confirm { background: #007bff; color: white; }
 
-/* [신규] 우상단 닫기 버튼 */
+/* 우상단 닫기 버튼 */
 .close-x-btn {
   position: absolute; top: 15px; right: 15px;
   width: 24px; height: 24px; line-height: 24px;
@@ -187,18 +188,26 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 }
 .close-x-btn:hover { color: #333; }
 
-/* [신규] 연락처 버튼 그룹 */
+/* 연락처 버튼 그룹 */
 .contact-btn-group {
-  display: flex; gap: 8px; justify-content: center; margin-bottom: 20px;
+  display: flex; gap: 6px; justify-content: center; margin: 0 auto 20px auto;
+  max-width: 280px; /* [수정] 너비 축소 */
 }
 .contact-btn {
-  flex: 1; padding: 8px 0; font-size: 13px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; color: white;
+  flex: 1; padding: 10px 0; font-size: 14px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer;
   text-decoration: none; display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.2s;
 }
+.contact-btn:active { opacity: 0.7; }
+
+/* [신규] 파스텔톤 버튼 색상 */
+.btn-pastel-blue { background-color: #e3f2fd; color: #1565c0; }   /* 연한 파랑 */
+.btn-pastel-green { background-color: #e8f5e9; color: #2e7d32; }  /* 연한 초록 */
+.btn-pastel-red { background-color: #ffebee; color: #c62828; }    /* 연한 빨강 */
 
 .overscroll-y-none { overscroll-behavior-y: none; }
 
-/* 통계 스타일 (생략 - 기존과 동일) */
+/* 통계 스타일 (기존과 동일) */
 .stats-wrapper { flex: 1; overflow-y: auto; background: white; padding: 20px; width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; }
 .stats-class-block { margin-bottom: 25px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
 .stats-class-header { background: #f8f9fa; padding: 10px 15px; font-weight: bold; color: #333; border-bottom: 1px solid #eee; }
@@ -217,7 +226,6 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .period-separator { color: #888; font-weight: bold; }
 .filter-container { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 5px 0; max-height: 100px; overflow-y: auto; }
 .filter-tag { display: inline-flex; align-items: center; cursor: pointer; user-select: none; }
-.filter-tag input { display: none; }
 .filter-tag span { padding: 6px 12px; border-radius: 20px; background-color: #f1f3f4; color: #555; font-size: 13px; font-weight: bold; border: 1px solid transparent; transition: all 0.2s; }
 .filter-tag input:checked + span { background-color: #e7f1ff; color: #007bff; border-color: #007bff; }
 .action-btn-full { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
