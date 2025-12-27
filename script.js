@@ -47,12 +47,18 @@ document.addEventListener('DOMContentLoaded', () => {
   window.closeStudentModal = closeStudentModal;
   window.toggleDateConfirmation = toggleDateConfirmation;
   window.showStudentSummary = showStudentSummary;
+  window.showMessageModal = showMessageModal;
   
   setupDatePicker();
 
   document.getElementById('modalCancelBtn').addEventListener('click', hideConfirmModal);
   document.getElementById('modalConfirmBtn').addEventListener('click', executeSave);
   
+  // ✅ [신규] 메시지 모달 닫기 이벤트 (버튼 클릭)
+  document.getElementById('messageModalBtn').addEventListener('click', () => {
+    document.getElementById('messageModal').classList.remove('show');
+  });
+
   const radios = document.getElementsByName('attType');
   radios.forEach(r => r.addEventListener('change', toggleReasonInput));
 
@@ -78,6 +84,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.target == confirmModal) {
       hideConfirmModal();
     }
+    // ✅ [신규] 메시지 모달 외부 클릭 시 닫기
+    const messageModal = document.getElementById('messageModal');
+    if (event.target == messageModal) {
+      messageModal.classList.remove('show');
+    }
   }
 
   window.addEventListener('popstate', () => {
@@ -87,6 +98,16 @@ document.addEventListener('DOMContentLoaded', () => {
   toggleReasonInput();
   fetchInitDataFromFirebase();
 });
+
+// =======================================================
+// [신규] 경고용 메시지 모달 띄우기 함수
+// =======================================================
+function showMessageModal(msg) {
+  const modal = document.getElementById('messageModal');
+  const body = document.getElementById('messageModalBody');
+  body.innerText = msg; // \n 줄바꿈 적용됨
+  modal.classList.add('show');
+}
 
 // =======================================================
 // [날짜 선택기]
@@ -109,13 +130,11 @@ function setupDatePicker() {
   dateInput.addEventListener('change', (e) => {
     if (!e.target.value) return;
     
+    // ✅ [수정] 날짜 이동 시 저장 강제
     if (Object.keys(pendingChanges).length > 0) {
-      if(!confirm("저장하지 않은 데이터가 있습니다. 무시하고 이동합니까?")) {
-        updateDateLabel(); 
-        return;
-      }
-      pendingChanges = {};
-      updateSaveButtonUI();
+      showMessageModal("저장하지 않은 데이터가 있습니다.\n먼저 저장하세요.");
+      updateDateLabel(); 
+      return;
     }
 
     activeDate = new Date(e.target.value);
@@ -140,14 +159,16 @@ function updateDateLabel() {
 // 화면 전환 및 홈 화면
 // =======================================================
 function goHome(fromHistory = false) {
+  // ✅ [수정] 저장 안 된 데이터가 있으면 이동 불가 (모달 띄움)
   if (Object.keys(pendingChanges).length > 0) {
-    if(!confirm("저장하지 않은 데이터가 있습니다. 무시하고 나가시겠습니까?")) {
-      if(fromHistory) history.pushState({ view: 'sub' }, '', '');
-      return;
-    }
-    pendingChanges = {};
-    updateSaveButtonUI();
+    showMessageModal("저장하지 않은 데이터가 있습니다.\n먼저 저장하세요.");
+    if(fromHistory) history.pushState({ view: 'sub' }, '', '');
+    return;
   }
+  
+  pendingChanges = {};
+  updateSaveButtonUI();
+
   switchView('homeScreen');
   renderHomeScreenClassButtons(); 
 }
@@ -395,9 +416,9 @@ function renderTable(data) {
 }
 
 async function toggleDateConfirmation(dayStr) {
-  // ✅ [수정] 저장 안 된 데이터가 있으면 마감 불가
+  // ✅ [수정] 저장 안 된 데이터가 있으면 모달을 띄우고 중단
   if (Object.keys(pendingChanges).length > 0) {
-      alert("아직 저장안된 데이터가 있습니다. 변경된 사항을 저장한 후에 다시 시도하세요.");
+      showMessageModal("아직 저장안된 데이터가 있습니다.\n변경된 사항을 저장한 후에 다시 시도하세요.");
       // 체크박스 상태 원복
       const checkbox = document.getElementById('chkConfirmDay');
       checkbox.checked = !checkbox.checked;
@@ -1008,6 +1029,8 @@ async function runStatsSearch() {
   let fullDayAbsentCounts = { '1': 0, '2': 0, '3': 0 }; 
   // ✅ [수정] 데이터 존재 여부를 확인하기 위한 플래그
   let hasActualData = false;
+  // ✅ [수정] 일별 조회 시 해당 날짜 데이터 존재 여부 플래그
+  let hasDateSpecificData = false; 
   
   try {
     const results = [];
@@ -1072,6 +1095,13 @@ async function runStatsSearch() {
       students.forEach(s => {
         if (!s.attendance) return;
 
+        // ✅ [추가] 일별 조회 시, 학생에게 해당 날짜 데이터가 있는지 확인
+        if (mode === 'daily') {
+           const targetDay = filterStartDate.getDate();
+           const hasRecordToday = s.attendance.some(a => a.day == targetDay);
+           if (hasRecordToday) hasDateSpecificData = true;
+        }
+
         let validRecords = s.attendance.filter(a => {
             if (!a.value || a.value.trim() === "") return false;
 
@@ -1124,7 +1154,7 @@ async function runStatsSearch() {
       });
     });
 
-    renderStatsResult(aggregated, targetClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts, hasActualData);
+    renderStatsResult(aggregated, targetClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts, hasActualData, hasDateSpecificData);
 
   } catch (e) {
     console.error(e);
@@ -1132,7 +1162,7 @@ async function runStatsSearch() {
   }
 }
 
-function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts, hasActualData) {
+function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts, hasActualData, hasDateSpecificData) {
   const container = document.getElementById('statsContainer');
   let html = "";
   
@@ -1169,6 +1199,9 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
   // ✅ [수정] 데이터 없음 vs 특이사항 없음 구분 표시
   if (!hasActualData) {
     html += `<div style="padding:20px; text-align:center; color:#888;">해당 기간의 자료가 없습니다.</div>`;
+  } else if (mode === 'daily' && !hasDateSpecificData) {
+    // 일별 조회인데 해당 날짜 데이터가 없는 경우
+    html += `<div style="padding:20px; text-align:center; color:#888;">해당 날짜의 자료가 없습니다.</div>`;
   } else if (!hasAnyAbsenceData) {
     html += `<div style="padding:20px; text-align:center; color:#888;">해당 기간에 특이사항(결석 등)이 없습니다.</div>`;
   }
