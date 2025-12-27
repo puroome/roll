@@ -395,6 +395,15 @@ function renderTable(data) {
 }
 
 async function toggleDateConfirmation(dayStr) {
+  // ✅ [수정] 저장 안 된 데이터가 있으면 마감 불가
+  if (Object.keys(pendingChanges).length > 0) {
+      alert("아직 저장안된 데이터가 있습니다. 변경된 사항을 저장한 후에 다시 시도하세요.");
+      // 체크박스 상태 원복
+      const checkbox = document.getElementById('chkConfirmDay');
+      checkbox.checked = !checkbox.checked;
+      return;
+  }
+
   if (!currentRenderedData) return;
 
   const checkbox = document.getElementById('chkConfirmDay');
@@ -908,7 +917,18 @@ function renderStatsFilters() {
 
     const chkAll = document.getElementById('chkAll');
     const chkClasses = document.getElementsByName('classFilter');
-    chkAll.addEventListener('change', (e) => { chkClasses.forEach(cb => cb.checked = e.target.checked); });
+    
+    chkAll.addEventListener('change', (e) => { 
+        chkClasses.forEach(cb => cb.checked = e.target.checked); 
+    });
+
+    // ✅ [수정] 개별 체크박스 상태가 변경되면 '전체' 체크박스도 동기화
+    chkClasses.forEach(cb => {
+        cb.addEventListener('change', () => {
+            const allChecked = Array.from(chkClasses).every(c => c.checked);
+            chkAll.checked = allChecked;
+        });
+    });
 }
 
 async function runStatsSearch() {
@@ -986,6 +1006,8 @@ async function runStatsSearch() {
   
   window.currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
   let fullDayAbsentCounts = { '1': 0, '2': 0, '3': 0 }; 
+  // ✅ [수정] 데이터 존재 여부를 확인하기 위한 플래그
+  let hasActualData = false;
   
   try {
     const results = [];
@@ -1000,6 +1022,8 @@ async function runStatsSearch() {
         
         targetClassKeys.forEach(classKey => {
             if (monthData[classKey]) {
+                // 데이터가 하나라도 발견되면 true 설정
+                hasActualData = true;
                 monthResults.push({ 
                     year: tm.year, 
                     month: tm.month, 
@@ -1100,7 +1124,7 @@ async function runStatsSearch() {
       });
     });
 
-    renderStatsResult(aggregated, targetClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts);
+    renderStatsResult(aggregated, targetClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts, hasActualData);
 
   } catch (e) {
     console.error(e);
@@ -1108,7 +1132,7 @@ async function runStatsSearch() {
   }
 }
 
-function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts) {
+function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, isAllConfirmed, fullDayAbsentCounts, hasActualData) {
   const container = document.getElementById('statsContainer');
   let html = "";
   
@@ -1119,12 +1143,12 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
       if(summary) html += summary;
   }
 
-  let hasAnyData = false;
+  let hasAnyAbsenceData = false;
   sortedClassKeys.forEach(classKey => {
     const studentsMap = aggregatedData[classKey];
     if (!studentsMap || Object.keys(studentsMap).length === 0) return;
 
-    hasAnyData = true;
+    hasAnyAbsenceData = true;
     html += `<div class="stats-class-block"><div class="stats-class-header">${classKey}반</div>`;
 
     const sortedStudentNos = Object.keys(studentsMap).sort((a,b) => Number(a) - Number(b));
@@ -1142,7 +1166,10 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
     html += `</div>`;
   });
 
-  if (!hasAnyData) {
+  // ✅ [수정] 데이터 없음 vs 특이사항 없음 구분 표시
+  if (!hasActualData) {
+    html += `<div style="padding:20px; text-align:center; color:#888;">해당 기간의 자료가 없습니다.</div>`;
+  } else if (!hasAnyAbsenceData) {
     html += `<div style="padding:20px; text-align:center; color:#888;">해당 기간에 특이사항(결석 등)이 없습니다.</div>`;
   }
   container.innerHTML = html;
