@@ -1,4 +1,4 @@
-[cite_start][cite: 3] import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, get, update, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
@@ -731,7 +731,7 @@ function closeStudentModal() {
 }
 
 // =======================================================
-// [수정됨] 학생 상세 보기 팝업 함수 (제목 및 버튼 스타일)
+// [수정됨] 학생 상세 보기 팝업 함수 (버튼 및 로직 개선)
 // =======================================================
 function showStudentSummary(studentNo, studentName) {
   if (!currentRenderedData || !currentRenderedData.students) {
@@ -748,8 +748,8 @@ function showStudentSummary(studentNo, studentName) {
   const month = (activeDate.getMonth() + 1).toString();
   
   const titleEl = document.getElementById('studentModalTitle');
-  // [수정] 괄호 제거, 월 숫자 파란색, 텍스트 크기 이름과 동일하게
-  titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span> <span class="modal-sub-title"><span style="color:#007bff">${month}</span>월 출결사항</span>`;
+  // [수정] 이름 옆에 [N월] 출결사항 문구 추가 (modal-sub-title 클래스 사용)
+  titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span> <span class="modal-sub-title">[${month}월] 출결사항</span>`;
   
   // 연락처 및 3단 버튼 생성
   let contactHtml = "";
@@ -766,6 +766,7 @@ function showStudentSummary(studentNo, studentName) {
     const smsBody = `${shortName}${suffix}, 선생님이야. 아래 주소에 들어가서 이름적고, 출석하기 버튼 누르면 돼.\n${locationUrl}`;
     const encodedBody = encodeURIComponent(smsBody);
 
+    // [수정] 파스텔톤 클래스 적용 및 '위치' 텍스트 변경
     contactHtml = `
       <div class="contact-btn-group">
           <a href="tel:${phone}" class="contact-btn btn-pastel-blue">
@@ -847,7 +848,7 @@ function generateSummaryHtml(attendanceList) {
 }
 
 // =======================================================
-// [통계 기능]
+// [통계 기능] (기존 유지)
 // =======================================================
 async function enterStatsMode() {
   history.pushState({ mode: 'stats' }, '', '');
@@ -890,8 +891,7 @@ function renderStatsFilters() {
     const classes = globalData[CURRENT_YEAR].classes || [];
     
     const allWrapper = document.createElement('label');
-    // [수정] '전체' 버튼에 filter-all 클래스 추가
-    allWrapper.className = 'filter-tag filter-all';
+    allWrapper.className = 'filter-tag';
     allWrapper.innerHTML = `<input type="checkbox" id="chkAll" checked><span>전체</span>`;
     container.appendChild(allWrapper);
 
