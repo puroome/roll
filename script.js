@@ -731,7 +731,7 @@ function closeStudentModal() {
 }
 
 // =======================================================
-// [수정됨] 학생 상세 보기 팝업 함수 (버튼 및 로직 개선)
+// [수정됨] 학생 상세 보기 팝업 함수
 // =======================================================
 function showStudentSummary(studentNo, studentName) {
   if (!currentRenderedData || !currentRenderedData.students) {
@@ -748,8 +748,8 @@ function showStudentSummary(studentNo, studentName) {
   const month = (activeDate.getMonth() + 1).toString();
   
   const titleEl = document.getElementById('studentModalTitle');
-  // [수정] 이름 옆에 [N월] 출결사항 문구 추가 (modal-sub-title 클래스 사용)
-  titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span> <span class="modal-sub-title">[${month}월] 출결사항</span>`;
+  // [수정 완료] 대괄호 삭제, 서브타이틀 클래스 삭제(폰트크기/색상 이름과 동일하게), 월 숫자 파란색 적용
+  titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span> <span style="color:#007bff">${month}</span>월 출결사항`;
   
   // 연락처 및 3단 버튼 생성
   let contactHtml = "";
