@@ -748,44 +748,39 @@ function showStudentSummary(studentNo, studentName) {
   const month = (activeDate.getMonth() + 1).toString();
   
   const titleEl = document.getElementById('studentModalTitle');
-  titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span>`;
+  // [수정] 이름 옆에 [N월] 출결사항 문구 추가 (modal-sub-title 클래스 사용)
+  titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span> <span class="modal-sub-title">[${month}월] 출결사항</span>`;
   
   // 연락처 및 3단 버튼 생성
   let contactHtml = "";
   const phone = student.phone ? student.phone.replace(/[^0-9]/g, '') : ""; 
   
   if (phone) {
-    // 1. 이름 파싱 (성 제외)
-    // 일반적으로 첫 글자는 성이라고 가정 (2글자 이상인 경우)
     const shortName = studentName.length > 1 ? studentName.substring(1) : studentName;
 
-    // 2. 조사 판별 (받침 유무: (unicode - 0xAC00) % 28 > 0 이면 받침 있음)
-    // 마지막 글자의 유니코드 확인
     const lastChar = shortName.charCodeAt(shortName.length - 1);
     const hasBatchim = (lastChar - 0xAC00) % 28 > 0;
     const suffix = hasBatchim ? "아" : "야";
 
-    // 3. 문자 내용 생성
     const locationUrl = "https://puroome.github.io/pin/";
     const smsBody = `${shortName}${suffix}, 선생님이야. 아래 주소에 들어가서 이름적고, 출석하기 버튼 누르면 돼.\n${locationUrl}`;
     const encodedBody = encodeURIComponent(smsBody);
 
-    // 4. 버튼 HTML 생성 (전화번호 텍스트 없이 버튼만 일렬 배치)
+    // [수정] 파스텔톤 클래스 적용 및 '위치' 텍스트 변경
     contactHtml = `
       <div class="contact-btn-group">
-          <a href="tel:${phone}" class="contact-btn" style="background-color: #0d6efd;">
+          <a href="tel:${phone}" class="contact-btn btn-pastel-blue">
              📞 통화
           </a>
-          <a href="sms:${phone}" class="contact-btn" style="background-color: #198754;">
+          <a href="sms:${phone}" class="contact-btn btn-pastel-green">
              📩 문자
           </a>
-          <a href="sms:${phone}?body=${encodedBody}" class="contact-btn" style="background-color: #dc3545;">
-             📍 위치요청
+          <a href="sms:${phone}?body=${encodedBody}" class="contact-btn btn-pastel-red">
+             📍 위치
           </a>
       </div>
     `;
   } else {
-    // 전화번호가 없으면 버튼 영역 자체를 숨김 (아무것도 표시 안함)
     contactHtml = "";
   }
 
