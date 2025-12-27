@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body class="overscroll-y-none">
   
@@ -32,14 +32,13 @@
   </div>
 
   <div id="studentModal" class="modal-overlay">
-    <div class="modal-box">
+    <div class="modal-box" style="position: relative;">
+      <span class="close-x-btn" onclick="closeStudentModal()">×</span>
+      
       <div id="studentModalTitle" class="modal-title">학생 이름</div>
-      <div id="studentModalBody" class="modal-body" style="text-align: left; max-height: 40vh; overflow-y: auto;">
+      <div id="studentModalBody" class="modal-body" style="text-align: left; max-height: 50vh; overflow-y: auto;">
       </div>
-      <div class="modal-footer">
-        <button onclick="closeStudentModal()" class="modal-btn confirm">확인</button>
       </div>
-    </div>
   </div>
 
   <div id="homeScreen" class="view-section active">
@@ -132,7 +131,7 @@
     </div>
   </div>
 
-  <script type="module" src="script.js?v=8"></script>
+  <script type="module" src="script.js?v=9"></script>
 
   <script>
     if ('serviceWorker' in navigator) {
