@@ -122,8 +122,10 @@ function setupDatePicker() {
       locale: "ko",
       dateFormat: "Y-m-d",
       disableMobile: true,
-      maxDate: "today", // 미래 날짜 차단
-      // enable 옵션은 데이터 로드 후 업데이트
+      maxDate: "today",
+      // ✅ [수정] 달력 위치 기준을 '버튼'으로 설정 (버튼 가림 방지)
+      positionElement: document.getElementById('btnDateTrigger'),
+      
       onChange: function(selectedDates, dateStr, instance) {
           if (!dateStr) return;
 
@@ -989,6 +991,8 @@ function generateSummaryHtml(attendanceList) {
 // =======================================================
 // [통계 기능] (✅ 수정됨: UI 버튼 연결 및 연도 표시)
 // =======================================================
+// [script.js] enterStatsMode 함수 전체 교체
+
 async function enterStatsMode() {
   history.pushState({ mode: 'stats' }, '', '');
   switchView('statsScreen');
@@ -1011,19 +1015,17 @@ async function enterStatsMode() {
   const startInput = document.getElementById('statsStartDate');
   const endInput = document.getElementById('statsEndDate');
 
-  // ✅ UI 업데이트용 요소
   const txtDate = document.getElementById('txtStatsDate');
   const txtMonth = document.getElementById('txtStatsMonth');
   const txtStart = document.getElementById('txtStatsStart');
   const txtEnd = document.getElementById('txtStatsEnd');
 
-  // 기본값 설정 (Input Value)
+  // 기본값 설정
   dateInput.value = todayStr;
   monthInput.value = thisMonthStr;
   startInput.value = todayStr;
   endInput.value = todayStr;
 
-  // ✅ [수정] 기본값 계산: 가장 최근 수업일 & 올해 첫 수업일
   const recentDay = findMostRecentSchoolDay(new Date());
   const firstDay = getFirstSchoolDay();
 
@@ -1038,22 +1040,24 @@ async function enterStatsMode() {
   const f_dd = String(firstDay.getDate()).padStart(2, '0');
   const firstDayStr = `${f_yyyy}-${f_mm}-${f_dd}`;
 
-  // 1. 일별 통계 (UI 연결 추가)
-  txtDate.innerText = recentDayStr; // 초기값 표시
-
+  // 1. 일별 통계
+  txtDate.innerText = recentDayStr;
+  
   statsDateFlatpickr = flatpickr("#statsDateInput", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
       defaultDate: recentDayStr, 
       enable: getEnableDates(),
+      // ✅ [수정] 달력 위치 기준을 버튼으로
+      positionElement: document.getElementById('btnStatsDateTrigger'),
       onChange: (selectedDates, dateStr) => {
-          txtDate.innerText = dateStr; // 선택 시 텍스트 업데이트
+          txtDate.innerText = dateStr;
       }
   });
-  // 버튼 클릭 시 달력 열기
   document.getElementById('btnStatsDateTrigger').onclick = () => statsDateFlatpickr.open();
+
   
-  // 2. 월별 통계 (UI 연결 추가)
-  txtMonth.innerText = recentMonthStr; // 초기값 표시
+  // 2. 월별 통계
+  txtMonth.innerText = recentMonthStr;
 
   statsMonthFlatpickr = flatpickr("#statsMonthInput", {
       locale: "ko", 
@@ -1065,36 +1069,44 @@ async function enterStatsMode() {
             theme: "light"
           })
       ],
-      maxDate: "today", 
-      defaultDate: recentMonthStr, 
+      maxDate: "today",
+      defaultDate: recentMonthStr,
       disable: [],
+      // ✅ [수정] 달력 위치 기준을 버튼으로
+      positionElement: document.getElementById('btnStatsMonthTrigger'),
       onChange: (selectedDates, dateStr) => {
-          txtMonth.innerText = dateStr; // 선택 시 텍스트 업데이트
+          txtMonth.innerText = dateStr;
       }
   });
-  // 버튼 클릭 시 달력 열기
   document.getElementById('btnStatsMonthTrigger').onclick = () => statsMonthFlatpickr.open();
 
-  // 3. 기간 통계 (UI 연결 추가)
+
+  // 3. 기간 통계 (시작)
   txtStart.innerText = firstDayStr;
-  txtEnd.innerText = recentDayStr;
 
   statsStartFlatpickr = flatpickr("#statsStartDate", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
-      defaultDate: firstDayStr, 
+      defaultDate: firstDayStr,
       enable: getEnableDates(),
+      // ✅ [수정] 달력 위치 기준을 버튼으로
+      positionElement: document.getElementById('btnStatsStartTrigger'),
       onChange: (selectedDates, dateStr) => {
-          txtStart.innerText = dateStr; // 선택 시 텍스트 업데이트
-      } 
+          txtStart.innerText = dateStr;
+      }
   });
   document.getElementById('btnStatsStartTrigger').onclick = () => statsStartFlatpickr.open();
 
+  // 4. 기간 통계 (종료)
+  txtEnd.innerText = recentDayStr;
+
   statsEndFlatpickr = flatpickr("#statsEndDate", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
-      defaultDate: recentDayStr, 
+      defaultDate: recentDayStr,
       enable: getEnableDates(),
+      // ✅ [수정] 달력 위치 기준을 버튼으로
+      positionElement: document.getElementById('btnStatsEndTrigger'),
       onChange: (selectedDates, dateStr) => {
-          txtEnd.innerText = dateStr; // 선택 시 텍스트 업데이트
+          txtEnd.innerText = dateStr;
       }
   });
   document.getElementById('btnStatsEndTrigger').onclick = () => statsEndFlatpickr.open();
@@ -1662,3 +1674,4 @@ function getRealYear(schoolYear, month) {
   }
   return y;
 }
+
