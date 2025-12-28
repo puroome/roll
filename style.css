@@ -218,12 +218,16 @@ thead tr:nth-child(2) th { top: 32px; z-index: 50; }
 }
 tbody td:nth-child(2) { background-color: #fff; cursor: pointer; }
 tbody td:nth-child(2):hover { background-color: var(--secondary-bg) !important; color: var(--primary-color); }
-thead th.col-name {
-  background-color: #e2f1ff !important; color: var(--primary-dark); cursor: pointer; transition: all 0.2s;
-  z-index: 150 !important; top: 0; height: 64px; white-space: normal !important; line-height: 1.2;
-}
 
-/* [삭제됨] save-active 스타일 제거 */
+/* ✅ [수정] 이름 헤더 스타일 초기화 (기본 헤더와 동일하게 변경) */
+thead th.col-name {
+  background-color: #f8f9fa !important; /* 기본 회색 배경 */
+  color: #444; /* 기본 글자색 */
+  font-size: 13px; /* 기본 폰트 크기 */
+  cursor: default; 
+  z-index: 150 !important; top: 0; height: 64px; 
+  white-space: normal !important; line-height: 1.2;
+}
 
 thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-color: #f8f9fa;}
 .confirmed-header { color: #d63384 !important; }
