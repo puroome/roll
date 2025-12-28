@@ -402,7 +402,7 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
   100% { opacity: 0.6; }
 }
 
-/* 플로팅 저장 버튼 */
+/* 플로팅 저장 버튼 - 드래그 가능 */
 .floating-save-btn {
   position: fixed;
   bottom: 80px;
@@ -417,19 +417,20 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
   justify-content: center;
   box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
   cursor: pointer;
-  z-index: 1000;
-  transition: transform 0.2s, opacity 0.2s;
+  z-index: 5000;
+  transition: opacity 0.2s;
   font-size: 13px;
   font-weight: bold;
   opacity: 0;
   pointer-events: none;
-  transform: translateY(20px);
+  touch-action: none; /* 드래그 시 스크롤 방지 */
+  user-select: none;
 }
 .floating-save-btn.show {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0);
 }
 .floating-save-btn:active {
   transform: scale(0.95);
+  transition: transform 0.1s;
 }
