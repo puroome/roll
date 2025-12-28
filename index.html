@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
 
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body class="overscroll-y-none">
   
@@ -81,14 +81,24 @@
           </button>
         </div>
         
-        <button id="btnBackToHome" class="home-center-btn">🏠</button>
+        <button id="btnBackToHome" class="home-center-btn">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="white">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+          </svg>
+        </button>
 
         <div class="group-right">
-          <div class="radio-group">
-            <label><input type="radio" name="attType" value="△" checked>인정△</label>
-            <label><input type="radio" name="attType" value="○">병○</label>
-            <label><input type="radio" name="attType" value="Ⅹ">무단Ⅹ</label>
+          <div class="segment-control">
+            <input type="radio" name="attType" id="type_ack" value="△" checked class="segment-input">
+            <label for="type_ack" class="segment-label">인정</label>
+
+            <input type="radio" name="attType" id="type_sick" value="○" class="segment-input">
+            <label for="type_sick" class="segment-label">병</label>
+
+            <input type="radio" name="attType" id="type_unauth" value="Ⅹ" class="segment-input">
+            <label for="type_unauth" class="segment-label">무단</label>
           </div>
+          
           <input type="text" id="reasonInput" placeholder="사유" disabled>
         </div>
       </div>
