@@ -225,7 +225,7 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .summary-total { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; font-weight: bold; color: #007bff; font-size: 16px; }
 #statsScreen .controls { width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; }
 
-/* ✅ [수정] 날짜 입력창 디자인 개선 (여백 밸런스 조정) */
+/* ✅ [수정] 날짜 입력창 디자인 개선 (균형 잡힌 여백) */
 .date-input-wrapper {
   position: relative;
   display: inline-block;
@@ -233,14 +233,14 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .date-picker { 
   text-align: center; 
   padding-right: 30px; 
-  width: 125px; /* [수정] 115px -> 125px (너비 약간 확보) */
+  width: 130px; /* [수정] 125px -> 130px (공간 확보) */
   cursor: pointer;
   border: 1px solid #ddd; border-radius: 4px; 
-  padding: 4px 40px 4px 2px; /* [수정] 왼쪽 2px로 축소, 오른쪽 40px로 확대 */
+  padding: 4px 36px 4px 10px; /* [수정] 오른쪽 36px(아이콘 보호), 왼쪽 10px(중앙 정렬 균형) */
   font-family: inherit; font-size: 14px; background: white; 
 }
 #statsPeriodInput .date-picker {
-  width: 122px; /* 기간 설정도 비슷하게 맞춤 */
+  width: 130px; /* 기간 설정도 동일한 너비 적용 */
 }
 /* 달력 아이콘 오버레이 */
 .calendar-icon-overlay {
