@@ -528,7 +528,7 @@ function renderTable(data) {
 
 async function toggleDateConfirmation(dayStr) {
   if (Object.keys(pendingChanges).length > 0) {
-      showMessageModal("아직 저장안된 데이터가 있습니다.\n변경된 사항을 저장한 후에 다시 시도하세요.");
+      showMessageModal("미저장 자료가 있습니다.\n마감하기 전에 저장하세요.");
       const checkbox = document.getElementById('chkConfirmDay');
       checkbox.checked = !checkbox.checked;
       return;
@@ -1674,4 +1674,5 @@ function getRealYear(schoolYear, month) {
   }
   return y;
 }
+
 
