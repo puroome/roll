@@ -300,23 +300,102 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 }
 .close-x-btn:hover { color: var(--text-main); }
 
-.contact-btn-group {
-  display: flex; gap: 6px; justify-content: center; margin: 0 auto 20px auto;
-  max-width: 280px; 
+/* [수정됨] 컨택 버튼 그룹 레이아웃 (토글 애니메이션용) */
+.contact-container {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto 20px auto;
+  max-width: 320px;
+  height: 45px; 
+  position: relative;
 }
+
+.contact-swap-area {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  overflow: hidden; /* 영역 밖으로 나가는 버튼 숨김 */
+}
+
+.btn-group-default, .btn-group-options {
+  position: absolute;
+  top: 0; 
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  gap: 6px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 기본 상태: Default 보임, Options 숨김(오른쪽에 있음) */
+.btn-group-default {
+  transform: translateX(0);
+  opacity: 1;
+  z-index: 2;
+  pointer-events: auto;
+}
+.btn-group-options {
+  transform: translateX(100%);
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 활성 상태(옵션 모드): Default 왼쪽으로 사라짐, Options 오른쪽에서 들어옴 */
+.contact-container.options-active .btn-group-default {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+.contact-container.options-active .btn-group-options {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 위치 버튼 스타일 */
+.btn-location-toggle {
+  width: 80px;
+  height: 100%;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 10;
+  transition: background-color 0.3s, color 0.3s;
+  cursor: pointer;
+}
+
+/* 위치 버튼 비활성(회색) 모드 */
+.contact-container.options-active .btn-location-toggle {
+  background-color: #e0e0e0 !important;
+  color: #999 !important;
+  border-color: #ccc;
+}
+
 .contact-btn {
-  flex: 1; padding: 10px 0; font-size: 14px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer;
-  text-decoration: none; display: flex; align-items: center; justify-content: center;
-  transition: opacity 0.2s;
+  flex: 1; 
+  height: 100%;
+  font-size: 14px; 
+  font-weight: bold; 
+  border-radius: 8px; 
+  border: none; 
+  cursor: pointer;
+  text-decoration: none; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
 .contact-btn:active { opacity: 0.7; }
 
 .btn-pastel-blue { background-color: #e3f2fd; color: #1565c0; }   
 .btn-pastel-green { background-color: #e8f5e9; color: #2e7d32; }  
-.btn-pastel-red { background-color: #ffebee; color: #c62828; } 
-
-/* [수정됨] 회색 버튼 (위치 활성화 시) */
-.btn-gray-active { background-color: #e0e0e0 !important; color: #888 !important; pointer-events: auto; }
+.btn-pastel-red { background-color: #ffebee; color: #c62828; }    
 
 .overscroll-y-none { overscroll-behavior-y: none; }
 
@@ -487,29 +566,3 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .badge-confirmed { font-size: 12px; color: green; margin-left: 8px; }
 .badge-unconfirmed { font-size: 12px; color: red; margin-left: 8px; }
 .text-red-small { font-size: 12px; color: red; margin-left: 5px; }
-
-/* [수정됨] 위치 선택창 (심플한 버튼 row) + 우측 정렬 */
-.location-options-box {
-  display: flex;
-  justify-content: flex-end; /* 우측 정렬 */
-  gap: 10px;
-  margin-bottom: 20px; 
-  margin-top: -10px;
-  width: 100%;
-  max-width: 280px;
-  margin-left: auto;
-  margin-right: auto;
-  animation: fadeIn 0.2s;
-  box-sizing: border-box;
-}
-.loc-opt-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: bold;
-  cursor: pointer;
-}
-.btn-request { background-color: #ffebee; color: #c62828; }
-.btn-check { background-color: #e3f2fd; color: #1565c0; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
