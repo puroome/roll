@@ -130,7 +130,7 @@ function setupDatePicker() {
           if (!dateStr) return;
 
           if (Object.keys(pendingChanges).length > 0) {
-              showMessageModal("미저장 자료가 있습니다.\n먼저 저장하세요.");
+              showMessageModal("미저장 자료가 있습니다.\n마감하기 전에 저장하세요.");
               instance.setDate(activeDate); 
               updateDateLabel();
               return;
@@ -1674,6 +1674,7 @@ function getRealYear(schoolYear, month) {
   }
   return y;
 }
+
 
 
 
