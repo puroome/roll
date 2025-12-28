@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if(el) el.style.display = 'none';
   };
   window.execLocationCheck = () => {
-      window.open("https://puroome.github.io/pin/admin/", "_blank");
+      window.open("https://puroome.github.io/pin/check/", "_blank");
       const el = document.getElementById('locationOptionsBox');
       if(el) el.style.display = 'none';
   };
@@ -1804,3 +1804,4 @@ function convertSymbolToText(symbol) {
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
 }
+
