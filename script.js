@@ -37,7 +37,7 @@ let pendingNavigation = null;
 let currentRenderedData = null; 
 let currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
 
-// ✅ [신규] Flatpickr 인스턴스 변수
+// ✅ Flatpickr 인스턴스 변수
 let mainFlatpickr = null;
 let statsDateFlatpickr = null;
 let statsMonthFlatpickr = null;
@@ -147,7 +147,7 @@ function setupDatePicker() {
   updateDateLabel();
 }
 
-// ✅ [신규] 수업이 있는 "날짜" 리스트 반환 (YYYY-MM-DD)
+// ✅ 수업이 있는 "날짜" 리스트 반환 (YYYY-MM-DD)
 function getEnableDates() {
     const year = CURRENT_YEAR;
     if (!globalData[year] || !globalData[year].validDays) return [];
@@ -170,7 +170,7 @@ function getEnableDates() {
     return enabledDates;
 }
 
-// ✅ [신규] 수업이 있는 "월" 리스트 반환 (YYYY-MM)
+// ✅ 수업이 있는 "월" 리스트 반환 (YYYY-MM)
 function getEnableMonths() {
     const year = CURRENT_YEAR;
     if (!globalData[year] || !globalData[year].validDays) return [];
@@ -188,7 +188,7 @@ function getEnableMonths() {
     return validMonths;
 }
 
-// ✅ [신규] 데이터 로드 후 Flatpickr 설정 업데이트 (핵심)
+// ✅ 데이터 로드 후 Flatpickr 설정 업데이트 (핵심)
 function updateFlatpickrAllowedDates() {
     const allowedDates = getEnableDates();
     const allowedMonths = getEnableMonths();
@@ -202,11 +202,9 @@ function updateFlatpickrAllowedDates() {
     }
 
     // 2. 월별 달력: disable 함수로 허용되지 않은 월 비활성화
-    // (MonthSelect 플러그인은 enable 배열을 직접 지원하지 않는 경우가 많아 disable 함수 사용)
     if (statsMonthFlatpickr && allowedMonths.length > 0) {
         statsMonthFlatpickr.set('disable', [
             function(date) {
-                // date가 allowedMonths에 포함되어 있지 않으면 disable(true)
                 const y = date.getFullYear();
                 const m = String(date.getMonth() + 1).padStart(2, '0');
                 const ym = `${y}-${m}`;
@@ -216,19 +214,29 @@ function updateFlatpickrAllowedDates() {
     }
 }
 
+// ✅ 스마트 기본값: 오늘 또는 가장 가까운 과거 수업일
 function findMostRecentSchoolDay(startDate) {
     const limit = 60;
     let checkDate = new Date(startDate);
     
-    // 간단히 isValidSchoolDay 대신 getEnableDates 결과 활용 가능하나
-    // 기존 로직 유지를 위해 그대로 둠
     for (let i = 0; i < limit; i++) {
         if (isValidSchoolDay(checkDate)) {
             return checkDate;
         }
         checkDate.setDate(checkDate.getDate() - 1);
     }
-    return startDate;
+    return startDate; // 못 찾으면 원래 날짜 반환
+}
+
+// ✅ 스마트 기본값: 올해 첫 수업일 찾기
+function getFirstSchoolDay() {
+    const dates = getEnableDates();
+    if (dates.length > 0) {
+        // 문자열 정렬 (YYYY-MM-DD 형태이므로 가능)
+        dates.sort();
+        return new Date(dates[0]);
+    }
+    return new Date(); // 데이터 없으면 오늘
 }
 
 function isValidSchoolDay(dateObj) {
@@ -991,53 +999,65 @@ async function enterStatsMode() {
   const radios = document.getElementsByName('statsType');
   radios.forEach(r => r.addEventListener('change', updateStatsInputVisibility));
 
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const todayStr = `${yyyy}-${mm}-${dd}`;
-  const thisMonthStr = `${yyyy}-${mm}`;
+  // ✅ [수정] 기본값 계산: 가장 최근 수업일 & 올해 첫 수업일
+  const recentDay = findMostRecentSchoolDay(new Date());
+  const firstDay = getFirstSchoolDay();
+
+  const yyyy = recentDay.getFullYear();
+  const mm = String(recentDay.getMonth() + 1).padStart(2, '0');
+  const dd = String(recentDay.getDate()).padStart(2, '0');
+  const recentDayStr = `${yyyy}-${mm}-${dd}`;
+  const recentMonthStr = `${yyyy}-${mm}`;
+
+  const f_yyyy = firstDay.getFullYear();
+  const f_mm = String(firstDay.getMonth() + 1).padStart(2, '0');
+  const f_dd = String(firstDay.getDate()).padStart(2, '0');
+  const firstDayStr = `${f_yyyy}-${f_mm}-${f_dd}`;
 
   const dateInput = document.getElementById('statsDateInput');
   const monthInput = document.getElementById('statsMonthInput');
   const startInput = document.getElementById('statsStartDate');
   const endInput = document.getElementById('statsEndDate');
 
-  // 기본값 설정
-  dateInput.value = todayStr;
-  monthInput.value = thisMonthStr;
-  startInput.value = todayStr;
-  endInput.value = todayStr;
+  // 기본값 설정 (스마트 로직 적용)
+  dateInput.value = recentDayStr;
+  monthInput.value = recentMonthStr;
+  startInput.value = firstDayStr;
+  endInput.value = recentDayStr;
 
   // ✅ [수정] 통계용 Flatpickr 적용
-  // 1. 일별 통계 (수업 있는 날만 enable)
+  
+  // 1. 일별 통계
   statsDateFlatpickr = flatpickr("#statsDateInput", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
+      defaultDate: recentDayStr, // 기본값 지정
       enable: getEnableDates() 
   });
   
-  // 2. 월별 통계 (수업 있는 달만 enable - Plugin 사용)
+  // 2. 월별 통계
   statsMonthFlatpickr = flatpickr("#statsMonthInput", {
       locale: "ko", 
       disableMobile: true,
       plugins: [
           new monthSelectPlugin({
-            shorthand: true, // ex: "2025-03"
+            shorthand: true, 
             dateFormat: "Y-m", 
             theme: "light"
           })
       ],
-      // 초기에는 빈 disable 함수(나중에 데이터 로드 후 업데이트됨)
-      disable: []
+      defaultDate: recentMonthStr, // 기본값 지정
+      disable: [] // 나중에 업데이트됨
   });
 
-  // 3. 기간 통계 (수업 있는 날만 enable)
+  // 3. 기간 통계
   statsStartFlatpickr = flatpickr("#statsStartDate", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
+      defaultDate: firstDayStr, // 기본값 지정
       enable: getEnableDates() 
   });
   statsEndFlatpickr = flatpickr("#statsEndDate", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
+      defaultDate: recentDayStr, // 기본값 지정
       enable: getEnableDates() 
   });
   
@@ -1050,8 +1070,9 @@ async function enterStatsMode() {
 
 function updateStatsInputVisibility() {
   const mode = document.querySelector('input[name="statsType"]:checked').value;
-  document.getElementById('statsDateInput').style.display = (mode === 'daily') ? 'block' : 'none';
-  document.getElementById('statsMonthInput').style.display = (mode === 'monthly') ? 'block' : 'none';
+  // Wrapper ID로 접근 (CSS에서 display 제어)
+  document.getElementById('dailyWrapper').style.display = (mode === 'daily') ? 'inline-block' : 'none';
+  document.getElementById('monthlyWrapper').style.display = (mode === 'monthly') ? 'inline-block' : 'none';
   document.getElementById('statsPeriodInput').style.display = (mode === 'period') ? 'flex' : 'none';
 }
 
@@ -1140,7 +1161,6 @@ async function runStatsSearch() {
     let mYear = parseInt(parts[0]);
     let mMonth = parseInt(parts[1]);
     
-    // ✅ 미래 월 체크도 Flatpickr가 막아주지만 이중 체크 차원에서 남김(나쁠 건 없음)
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth() + 1;
     if (mYear > currentYear || (mYear === currentYear && mMonth > currentMonth)) {
