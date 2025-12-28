@@ -219,11 +219,11 @@ thead tr:nth-child(2) th { top: 32px; z-index: 50; }
 tbody td:nth-child(2) { background-color: #fff; cursor: pointer; }
 tbody td:nth-child(2):hover { background-color: var(--secondary-bg) !important; color: var(--primary-color); }
 
-/* ✅ [수정] 이름 헤더 스타일 초기화 (기본 헤더와 동일하게 변경) */
+/* 헤더 스타일 */
 thead th.col-name {
-  background-color: #f8f9fa !important; /* 기본 회색 배경 */
-  color: #444; /* 기본 글자색 */
-  font-size: 13px; /* 기본 폰트 크기 */
+  background-color: #f8f9fa !important; 
+  color: #444; 
+  font-size: 13px; 
   cursor: default; 
   z-index: 150 !important; top: 0; height: 64px; 
   white-space: normal !important; line-height: 1.2;
@@ -440,3 +440,47 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
   transform: scale(0.95);
   transition: transform 0.1s;
 }
+
+/* ==========================================================================
+   [최적화 추가 클래스] 인라인 스타일 대체용 유틸리티
+   ========================================================================== */
+
+/* 메시지/상태 표시 관련 */
+.message-box { padding: 20px; text-align: center; }
+.message-box-lg { padding: 40px; text-align: center; }
+.message-full { grid-column: 1/-1; text-align: center; }
+.text-gray { color: #888; }
+.text-red { color: red; }
+.text-primary { color: var(--primary-color); }
+
+/* 레이아웃/유틸리티 */
+.hidden-wrapper { height: 0; overflow: hidden; }
+.hidden-input { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+.relative-container { position: relative; }
+.flex-center-col { display: flex; flex-direction: column; align-items: center; }
+.w-full { width: 100%; }
+
+/* 헤더 커스텀 */
+.header-day-content { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.header-checkbox-label { font-size: 12px; display: flex; align-items: center; cursor: pointer; background: rgba(255,255,255,0.5); padding: 2px 6px; border-radius: 4px; }
+.header-checkbox-span { margin-left: 4px; }
+
+/* 학생 요약 모달 */
+.student-modal-subtitle { font-size: 0.8em; color: #666; }
+.student-modal-month { color: var(--primary-color); }
+.summary-list-container { text-align: left; }
+.summary-item { margin-bottom: 8px; font-size: 15px; padding-bottom: 5px; border-bottom: 1px dashed #eee; }
+.summary-absent-type { font-weight: bold; color: #d63384; }
+.summary-detail-text { font-weight: bold; }
+
+/* 통계 화면 */
+.stats-header-title { margin: 0; font-size: 22px; font-weight: 800; color: #222; letter-spacing: -0.5px; }
+.stats-header-spacer { width: 60px; }
+.stats-title { text-align: center; margin-bottom: 15px; font-weight: bold; color: #555; }
+.stats-date-trigger { width: 160px; justify-content: center; }
+.stats-period-trigger { width: 130px; justify-content: center; padding: 6px 4px; }
+
+/* 뱃지 */
+.badge-confirmed { font-size: 12px; color: green; margin-left: 8px; }
+.badge-unconfirmed { font-size: 12px; color: red; margin-left: 8px; }
+.text-red-small { font-size: 12px; color: red; margin-left: 5px; }
