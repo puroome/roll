@@ -225,7 +225,34 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .stats-summary-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
 .summary-total { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; font-weight: bold; color: #007bff; font-size: 16px; }
 #statsScreen .controls { width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; }
-.date-picker { border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px; font-family: inherit; font-size: 14px; background: white; }
+
+/* ✅ [수정] 날짜 입력창 디자인 개선 */
+.date-input-wrapper {
+  position: relative;
+  display: inline-block;
+}
+.date-picker { 
+  text-align: center; /* [수정] 가운데 정렬 */
+  padding-right: 30px; /* 아이콘 공간 확보 */
+  width: 140px; 
+  cursor: pointer;
+  border: 1px solid #ddd; border-radius: 4px; padding: 4px 30px 4px 8px; /* 오른쪽 패딩 증가 */
+  font-family: inherit; font-size: 14px; background: white; 
+}
+#statsPeriodInput .date-picker {
+  width: 125px; /* 기간 설정은 두 개라 조금 작게 */
+}
+/* 달력 아이콘 오버레이 */
+.calendar-icon-overlay {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none; /* 클릭 시 input이 눌리도록 */
+  font-size: 14px;
+  color: #666;
+}
+
 .stats-radio-container { display: flex; flex-direction: column; align-items: center; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box; }
 .radio-row { display: flex; gap: 10px; }
 .period-group { display: none; align-items: center; gap: 5px; width: 100%; justify-content: center; }
