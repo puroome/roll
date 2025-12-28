@@ -999,34 +999,39 @@ async function enterStatsMode() {
   const radios = document.getElementsByName('statsType');
   radios.forEach(r => r.addEventListener('change', updateStatsInputVisibility));
 
-  // ✅ [수정] 기본값 계산: 가장 최근 수업일 & 올해 첫 수업일
-  const recentDay = findMostRecentSchoolDay(new Date());
-  const firstDay = getFirstSchoolDay();
-
-  const yyyy = recentDay.getFullYear();
-  const mm = String(recentDay.getMonth() + 1).padStart(2, '0');
-  const dd = String(recentDay.getDate()).padStart(2, '0');
-  const recentDayStr = `${yyyy}-${mm}-${dd}`;
-  const recentMonthStr = `${yyyy}-${mm}`;
-
-  const f_yyyy = firstDay.getFullYear();
-  const f_mm = String(firstDay.getMonth() + 1).padStart(2, '0');
-  const f_dd = String(firstDay.getDate()).padStart(2, '0');
-  const firstDayStr = `${f_yyyy}-${f_mm}-${f_dd}`;
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+  const thisMonthStr = `${yyyy}-${mm}`;
 
   const dateInput = document.getElementById('statsDateInput');
   const monthInput = document.getElementById('statsMonthInput');
   const startInput = document.getElementById('statsStartDate');
   const endInput = document.getElementById('statsEndDate');
 
-  // 기본값 설정 (스마트 로직 적용)
-  dateInput.value = recentDayStr;
-  monthInput.value = recentMonthStr;
-  startInput.value = firstDayStr;
-  endInput.value = recentDayStr;
+  // 기본값 설정
+  dateInput.value = todayStr;
+  monthInput.value = thisMonthStr;
+  startInput.value = todayStr;
+  endInput.value = todayStr;
 
-  // ✅ [수정] 통계용 Flatpickr 적용
-  
+  // ✅ [수정] 기본값 계산: 가장 최근 수업일 & 올해 첫 수업일
+  const recentDay = findMostRecentSchoolDay(new Date());
+  const firstDay = getFirstSchoolDay();
+
+  const r_yyyy = recentDay.getFullYear();
+  const r_mm = String(recentDay.getMonth() + 1).padStart(2, '0');
+  const r_dd = String(recentDay.getDate()).padStart(2, '0');
+  const recentDayStr = `${r_yyyy}-${r_mm}-${r_dd}`;
+  const recentMonthStr = `${r_yyyy}-${r_mm}`;
+
+  const f_yyyy = firstDay.getFullYear();
+  const f_mm = String(firstDay.getMonth() + 1).padStart(2, '0');
+  const f_dd = String(firstDay.getDate()).padStart(2, '0');
+  const firstDayStr = `${f_yyyy}-${f_mm}-${f_dd}`;
+
   // 1. 일별 통계
   statsDateFlatpickr = flatpickr("#statsDateInput", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
@@ -1034,7 +1039,7 @@ async function enterStatsMode() {
       enable: getEnableDates() 
   });
   
-  // 2. 월별 통계
+  // 2. 월별 통계 (✅ 미래 차단 추가)
   statsMonthFlatpickr = flatpickr("#statsMonthInput", {
       locale: "ko", 
       disableMobile: true,
@@ -1045,6 +1050,7 @@ async function enterStatsMode() {
             theme: "light"
           })
       ],
+      maxDate: "today", // ✅ [수정] 미래 월 선택 차단
       defaultDate: recentMonthStr, // 기본값 지정
       disable: [] // 나중에 업데이트됨
   });
@@ -1061,7 +1067,6 @@ async function enterStatsMode() {
       enable: getEnableDates() 
   });
   
-  // 이미 데이터가 로드된 상태라면 즉시 업데이트
   updateFlatpickrAllowedDates();
 
   renderStatsFilters();
@@ -1134,8 +1139,6 @@ async function runStatsSearch() {
 
   const today = new Date(); 
 
-  // ✅ [수정] Flatpickr가 이미 선택을 제한하므로, 별도의 경고 로직(isValidSchoolDay 체크 등) 제거
-  
   if (mode === 'daily') {
     const dateStr = document.getElementById('statsDateInput').value; 
     if(!dateStr) { alert("날짜를 선택해주세요."); return; }
@@ -1161,14 +1164,8 @@ async function runStatsSearch() {
     let mYear = parseInt(parts[0]);
     let mMonth = parseInt(parts[1]);
     
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1;
-    if (mYear > currentYear || (mYear === currentYear && mMonth > currentMonth)) {
-         container.innerHTML = '<div style="padding:40px; text-align:center; color:#888;">아직 조회할 수 없습니다.</div>';
-         return;
-    }
+    // ✅ [수정] 미래 월 경고 로직 삭제 (Flatpickr가 막아주므로)
 
-    // ✅ [수정] 1,2월은 작년 학년도로 계산
     if (mMonth <= 2) mYear -= 1;
 
     // 해당 월의 1일부터 말일까지 범위 설정
@@ -1196,7 +1193,6 @@ async function runStatsSearch() {
     while(curr <= endLimit) {
         let qMonth = curr.getMonth() + 1;
         let qYear = curr.getFullYear();
-        // ✅ [수정] 1,2월은 작년 학년도로 계산
         if (qMonth <= 2) qYear -= 1;
 
         targetMonthsToFetch.push({ year: qYear.toString(), month: qMonth.toString() });
