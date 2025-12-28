@@ -17,7 +17,6 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGO
 
 let globalData = {}; 
 
-// [최적화] 학년도 계산 함수 통합
 function getSchoolYear(dateObj) {
     const m = dateObj.getMonth() + 1;
     const y = dateObj.getFullYear();
@@ -112,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchInitDataFromFirebase();
 });
 
-// ✅ [신규] 드래그 가능한 플로팅 저장 버튼 생성 및 이벤트 연결
+// ✅ 드래그 가능한 플로팅 저장 버튼 생성 및 이벤트 연결
 function createFloatingSaveButton() {
     const btn = document.createElement('div');
     btn.id = 'floatingSaveBtn';
@@ -251,7 +250,6 @@ function setupDatePicker() {
   updateDateLabel();
 }
 
-// ✅ 수업이 있는 "날짜" 리스트 반환 (YYYY-MM-DD)
 function getEnableDates() {
     const year = CURRENT_YEAR;
     if (!globalData[year] || !globalData[year].validDays) return [];
@@ -274,7 +272,6 @@ function getEnableDates() {
     return enabledDates;
 }
 
-// ✅ 수업이 있는 "월" 리스트 반환 (YYYY-MM)
 function getEnableMonths() {
     const year = CURRENT_YEAR;
     if (!globalData[year] || !globalData[year].validDays) return [];
@@ -292,12 +289,11 @@ function getEnableMonths() {
     return validMonths;
 }
 
-// ✅ 데이터 로드 후 Flatpickr 설정 업데이트 (핵심)
 function updateFlatpickrAllowedDates() {
     const allowedDates = getEnableDates();
     const allowedMonths = getEnableMonths();
 
-    // 1. 일별/기간 달력: enable 옵션으로 허용 날짜만 활성화
+    // 1. 일별/기간 달력
     if (allowedDates.length > 0) {
         if (mainFlatpickr) mainFlatpickr.set('enable', allowedDates);
         if (statsDateFlatpickr) statsDateFlatpickr.set('enable', allowedDates);
@@ -305,7 +301,7 @@ function updateFlatpickrAllowedDates() {
         if (statsEndFlatpickr) statsEndFlatpickr.set('enable', allowedDates);
     }
 
-    // 2. 월별 달력: disable 함수로 허용되지 않은 월 비활성화
+    // 2. 월별 달력
     if (statsMonthFlatpickr && allowedMonths.length > 0) {
         statsMonthFlatpickr.set('disable', [
             function(date) {
@@ -318,7 +314,6 @@ function updateFlatpickrAllowedDates() {
     }
 }
 
-// ✅ 스마트 기본값: 오늘 또는 가장 가까운 과거 수업일
 function findMostRecentSchoolDay(startDate) {
     const limit = 60;
     let checkDate = new Date(startDate);
@@ -329,18 +324,16 @@ function findMostRecentSchoolDay(startDate) {
         }
         checkDate.setDate(checkDate.getDate() - 1);
     }
-    return startDate; // 못 찾으면 원래 날짜 반환
+    return startDate; 
 }
 
-// ✅ 스마트 기본값: 올해 첫 수업일 찾기
 function getFirstSchoolDay() {
     const dates = getEnableDates();
     if (dates.length > 0) {
-        // 문자열 정렬 (YYYY-MM-DD 형태이므로 가능)
         dates.sort();
         return new Date(dates[0]);
     }
-    return new Date(); // 데이터 없으면 오늘
+    return new Date(); 
 }
 
 function isValidSchoolDay(dateObj) {
@@ -398,7 +391,6 @@ async function fetchInitDataFromFirebase() {
     if (snapshot.exists()) {
       globalData = snapshot.val();
       renderHomeScreenClassButtons();
-      // ✅ 데이터 로드 후 달력 갱신
       updateFlatpickrAllowedDates();
     }
   } catch (error) {
@@ -502,11 +494,9 @@ async function loadStudents() {
   const grade = parts[0];
   const cls = parts[1];
 
-  // ✅ [최적화] 스켈레톤 로딩 표시
   const tableContainer = document.getElementById('tableContainer');
-  tableContainer.innerHTML = ''; // 초기화
+  tableContainer.innerHTML = ''; 
   
-  // 10개의 스켈레톤 행 생성
   const skeletonHTML = Array(10).fill(0).map(() => `
     <div class="skeleton-row">
       <div class="skeleton-box" style="width: 30px;"></div>
@@ -538,7 +528,6 @@ async function loadStudents() {
   }
 }
 
-// ✅ [최적화] renderTable: 배열 push 후 join 사용
 function renderTable(data) {
   if (!data.confirmations) data.confirmations = {};
   
@@ -578,7 +567,6 @@ function renderTable(data) {
 
   const minTableWidth = FIXED_WIDTH_NO + FIXED_WIDTH_NAME + (MAX_PERIODS * MIN_CELL_WIDTH);
 
-  // ✅ 배열을 사용해 렌더링 속도 향상
   const htmlParts = [];
   
   htmlParts.push(`<table style="min-width: ${minTableWidth}px;">`);
@@ -600,10 +588,11 @@ function renderTable(data) {
   const headerClass = isConfirmed ? 'confirmed-header' : '';
   const statusText = isConfirmed ? '마감됨' : '마감하기';
   
+  // ✅ [수정] onclick 이벤트 제거 (이름 헤더 클릭 시 저장 X)
   htmlParts.push(`
     <tr>
       <th rowspan="2" class="col-no">번호</th>
-      <th rowspan="2" class="col-name" onclick="onSaveBtnClick()">이름</th>
+      <th rowspan="2" class="col-name">이름</th>
       <th colspan="${MAX_PERIODS}" class="header-day ${headerClass}">
         <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
           <span>${dateLabel}</span>
@@ -653,7 +642,6 @@ function renderTable(data) {
   });
   htmlParts.push('</tbody></table>');
   
-  // 한 번에 DOM 업데이트
   container.innerHTML = htmlParts.join('');
 
   updateSaveButtonUI();
@@ -875,26 +863,20 @@ function queueUpdate(cell, newValue) {
   updateSaveButtonUI();
 }
 
-// ✅ [최적화] 저장 버튼 UI 업데이트 (헤더 텍스트 + 플로팅 버튼)
+// ✅ [수정] 이름 헤더 로직 제거하고 플로팅 버튼만 제어
 function updateSaveButtonUI() {
   const count = Object.keys(pendingChanges).length;
-  const nameHeader = document.querySelector('thead th.col-name');
+  // const nameHeader = document.querySelector('thead th.col-name'); <- 제거됨
   const fab = document.getElementById('floatingSaveBtn');
   
   if (count > 0) { 
-      if(nameHeader) {
-          nameHeader.innerHTML = `저장<br>(${count})`; 
-          nameHeader.classList.add('save-active');
-      }
+      // 이름 헤더 변경 로직 제거됨
       if(fab) {
           fab.classList.add('show');
           fab.innerHTML = `저장<br>(${count})`;
       }
   } else { 
-      if(nameHeader) {
-          nameHeader.innerHTML = "이름"; 
-          nameHeader.classList.remove('save-active');
-      }
+      // 이름 헤더 변경 로직 제거됨
       if(fab) {
           fab.classList.remove('show');
       }
