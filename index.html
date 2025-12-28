@@ -13,6 +13,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
 
   <link rel="stylesheet" href="style.css?v=9">
 </head>
@@ -72,7 +75,7 @@
     <div class="controls">
       <div class="control-row">
         <div class="group-left">
-          <input type="date" id="mainDatePicker" style="position: absolute; opacity: 0; width: 1px; height: 1px;">
+          <input type="text" id="mainDatePicker" style="position: absolute; opacity: 0; width: 1px; height: 1px;">
           <button id="btnDateTrigger" class="date-trigger-btn">
             <span id="dateDisplayLabel">--.--</span> 📅
           </button>
@@ -116,13 +119,13 @@
         </div>
 
         <div style="width: 100%; display: flex; justify-content: center; margin-top:5px;">
-          <input type="date" id="statsDateInput" class="date-picker">
-          <input type="month" id="statsMonthInput" class="date-picker" style="display:none;">
+          <input type="text" id="statsDateInput" class="date-picker">
+          <input type="text" id="statsMonthInput" class="date-picker" style="display:none;" placeholder="월 선택">
           
           <div id="statsPeriodInput" class="period-group">
-            <input type="date" id="statsStartDate" class="date-picker" style="width: 130px;">
+            <input type="text" id="statsStartDate" class="date-picker" style="width: 130px;">
             <span class="period-separator">~</span>
-            <input type="date" id="statsEndDate" class="date-picker" style="width: 130px;">
+            <input type="text" id="statsEndDate" class="date-picker" style="width: 130px;">
           </div>
         </div>
       </div>
@@ -140,6 +143,10 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+  
   <script type="module" src="script.js?v=9"></script>
 
   <script>
