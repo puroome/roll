@@ -303,20 +303,20 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 /* [수정됨] 컨택 버튼 그룹 레이아웃 (토글 애니메이션용) */
 .contact-container {
   display: flex;
-  gap: 8px;
+  gap: 6px; /* 간격도 contact-btn-group과 맞춤 */
   justify-content: center;
   align-items: center;
   margin: 0 auto 20px auto;
-  max-width: 320px;
-  height: 45px; 
+  max-width: 280px; /* 기존 contact-btn-group과 너비 동일하게 맞춤 */
+  height: 45px; /* 높이는 버튼 높이와 비슷하게 */
   position: relative;
 }
 
 .contact-swap-area {
   position: relative;
-  flex: 1;
+  flex: 2; /* 버튼 2개 분량의 공간 차지 */
   height: 100%;
-  overflow: hidden; /* 영역 밖으로 나가는 버튼 숨김 */
+  overflow: hidden; 
 }
 
 .btn-group-default, .btn-group-options {
@@ -358,7 +358,7 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 
 /* 위치 버튼 스타일 */
 .btn-location-toggle {
-  width: 80px;
+  flex: 1; /* 버튼 1개 분량의 공간 차지 (고정 너비 제거) */
   height: 100%;
   display: flex; 
   align-items: center; 
@@ -566,3 +566,4 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .badge-confirmed { font-size: 12px; color: green; margin-left: 8px; }
 .badge-unconfirmed { font-size: 12px; color: red; margin-left: 8px; }
 .text-red-small { font-size: 12px; color: red; margin-left: 5px; }
+
