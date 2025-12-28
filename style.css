@@ -225,32 +225,61 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .summary-total { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; font-weight: bold; color: #007bff; font-size: 16px; }
 #statsScreen .controls { width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; }
 
-/* ✅ [수정] 날짜 입력창 디자인 개선 (여백 밸런스 조정) */
+/* ✅ [수정] 날짜 입력창 디자인 개선 (텍스트+아이콘 덩어리 중앙 정렬) */
 .date-input-wrapper {
   position: relative;
-  display: inline-block;
-}
-.date-picker { 
-  text-align: center; 
-  width: 128px; /* [수정] 128px로 살짝 넓힘 */
+  /* Flexbox로 변경: 내부 내용물을 덩어리로 묶어 정중앙 배치 */
+  display: inline-flex; 
+  align-items: center;
+  justify-content: center;
+  
+  /* 기존 input의 외형 스타일을 Wrapper로 이동 */
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 128px; 
+  height: 32px; /* 높이 고정 */
+  padding: 0 4px;
+  box-sizing: border-box;
   cursor: pointer;
-  border: 1px solid #ddd; border-radius: 4px; 
-  /* [핵심 수정] 왼쪽 10px, 오른쪽 34px (아이콘 공간 + 여백) -> 시각적 중앙 정렬 */
-  padding: 4px 34px 4px 10px; 
-  font-family: inherit; font-size: 14px; background: white; 
 }
+
+.date-picker { 
+  /* Input 스타일 초기화 (투명화) */
+  border: none !important;
+  background: transparent !important;
+  margin: 0 !important;
+  padding: 0 6px 0 0 !important; /* 오른쪽 여백을 주어 아이콘과 살짝 분리 */
+  
+  width: 88px !important; /* YYYY-MM-DD가 들어갈 적절한 너비 고정 */
+  height: 100%;
+  
+  /* ★ 핵심: 텍스트를 우측 정렬하여 아이콘과 딱 붙게 만듦 */
+  text-align: right; 
+  
+  font-family: inherit; font-size: 14px; 
+  color: #333;
+  outline: none;
+  cursor: pointer;
+}
+
+/* 기간 설정도 동일하게 적용 */
 #statsPeriodInput .date-picker {
-  width: 128px; /* 기간 설정도 동일하게 적용 */
+  width: 88px !important; 
 }
+
 /* 달력 아이콘 오버레이 */
 .calendar-icon-overlay {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none; 
+  /* 절대 위치 제거 -> Flex 아이템으로 흐름에 참여 */
+  position: static !important;
+  transform: none !important;
+  margin: 0;
+  
   font-size: 14px;
   color: #666;
+  pointer-events: none; 
+  display: flex;
+  align-items: center;
 }
 
 .stats-radio-container { display: flex; flex-direction: column; align-items: center; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box; }
