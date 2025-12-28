@@ -17,7 +17,6 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGO
 
 let globalData = {}; 
 
-// ✅ [수정] 학년도 계산 로직 적용 (1,2월은 작년도를 가리킴)
 const nowForYear = new Date();
 const CURRENT_YEAR = (nowForYear.getMonth() + 1 <= 2) 
     ? (nowForYear.getFullYear() - 1).toString() 
@@ -38,6 +37,13 @@ let pendingNavigation = null;
 let currentRenderedData = null; 
 let currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
 
+// ✅ [신규] Flatpickr 인스턴스 변수
+let mainFlatpickr = null;
+let statsDateFlatpickr = null;
+let statsMonthFlatpickr = null;
+let statsStartFlatpickr = null;
+let statsEndFlatpickr = null;
+
 document.addEventListener('DOMContentLoaded', () => {
   window.onSaveBtnClick = onSaveBtnClick;
   window.loadStudents = loadStudents;
@@ -49,12 +55,12 @@ document.addEventListener('DOMContentLoaded', () => {
   window.showStudentSummary = showStudentSummary;
   window.showMessageModal = showMessageModal;
   
+  // ✅ Flatpickr 초기화
   setupDatePicker();
 
   document.getElementById('modalCancelBtn').addEventListener('click', hideConfirmModal);
   document.getElementById('modalConfirmBtn').addEventListener('click', executeSave);
   
-  // ✅ [신규] 메시지 모달 닫기 이벤트 (버튼 클릭)
   document.getElementById('messageModalBtn').addEventListener('click', () => {
     document.getElementById('messageModal').classList.remove('show');
   });
@@ -84,7 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.target == confirmModal) {
       hideConfirmModal();
     }
-    // ✅ [신규] 메시지 모달 외부 클릭 시 닫기
     const messageModal = document.getElementById('messageModal');
     if (event.target == messageModal) {
       messageModal.classList.remove('show');
@@ -99,104 +104,156 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchInitDataFromFirebase();
 });
 
-// =======================================================
-// [신규] 경고용 메시지 모달 띄우기 함수
-// =======================================================
 function showMessageModal(msg) {
   const modal = document.getElementById('messageModal');
   const body = document.getElementById('messageModalBody');
-  body.innerText = msg; // \n 줄바꿈 적용됨
+  body.innerText = msg; 
   modal.classList.add('show');
 }
 
 // =======================================================
-// [날짜 선택기]
+// [날짜 선택기] ✅ Flatpickr 적용
 // =======================================================
 function setupDatePicker() {
-  const dateInput = document.getElementById('mainDatePicker');
   const btnTrigger = document.getElementById('btnDateTrigger');
   
-  // ✅ [수정 완료: 기능 2] 미래 날짜 선택 방지 (max 속성)
-  const todayStr = new Date().toISOString().split('T')[0];
-  dateInput.setAttribute('max', todayStr);
+  // 메인 출석부용 달력
+  mainFlatpickr = flatpickr("#mainDatePicker", {
+      locale: "ko",
+      dateFormat: "Y-m-d",
+      disableMobile: true,
+      maxDate: "today", // 미래 날짜 차단
+      // enable 옵션은 데이터 로드 후 업데이트
+      onChange: function(selectedDates, dateStr, instance) {
+          if (!dateStr) return;
 
-  activeDate = new Date();
-  updateDateLabel();
+          if (Object.keys(pendingChanges).length > 0) {
+              showMessageModal("저장하지 않은 데이터가 있습니다.\n먼저 저장하세요.");
+              instance.setDate(activeDate); 
+              updateDateLabel();
+              return;
+          }
+          
+          activeDate = new Date(dateStr);
+          updateDateLabel();
+          loadStudents();
+      }
+  });
 
   btnTrigger.addEventListener('click', () => {
-    try {
-      dateInput.showPicker();
-    } catch (e) {
-      dateInput.focus();
-    }
+    if (mainFlatpickr) mainFlatpickr.open();
   });
-
-  dateInput.addEventListener('change', (e) => {
-    if (!e.target.value) return;
-    
-    // ✅ [수정] 날짜 이동 시 저장 강제
-    if (Object.keys(pendingChanges).length > 0) {
-      showMessageModal("저장하지 않은 데이터가 있습니다.\n먼저 저장하세요.");
-      updateDateLabel(); 
-      return;
-    }
-
-    // ✅ [수정 완료: 기능 2] 없는 날짜(시트에 데이터가 없는 날) 선택 방지
-    const selectedDate = new Date(e.target.value);
-    if (!isValidSchoolDay(selectedDate)) {
-        showMessageModal("수업이 없는 날입니다.\n(출석부 데이터가 존재하지 않습니다)");
-        // e.target.value는 자동으로 바뀌지 않으므로, 유효한 날짜로 돌리거나 초기화해야 함
-        // 여기서는 '원래 보던 날짜'로 되돌림
-        updateDateLabel();
-        return;
-    }
-
-    activeDate = selectedDate;
-    updateDateLabel();
-    loadStudents(); 
-  });
+  
+  updateDateLabel();
 }
 
-// ✅ [신규] 유효한 수업일인지 확인하는 함수
-function isValidSchoolDay(dateObj) {
+// ✅ [신규] 수업이 있는 "날짜" 리스트 반환 (YYYY-MM-DD)
+function getEnableDates() {
     const year = CURRENT_YEAR;
-    if (!globalData[year] || !globalData[year].validDays) return true; // 데이터 없으면 패스(오류방지)
+    if (!globalData[year] || !globalData[year].validDays) return [];
 
-    const m = (dateObj.getMonth() + 1).toString();
-    const d = dateObj.getDate();
-    
-    const validList = globalData[year].validDays[m];
-    if (!validList) return false; // 해당 월 데이터 없음
+    const validDaysMap = globalData[year].validDays; 
+    const enabledDates = [];
 
-    return validList.includes(d);
+    Object.keys(validDaysMap).forEach(monthStr => {
+        const days = validDaysMap[monthStr];
+        const m = parseInt(monthStr);
+        let y = parseInt(year);
+        // 1, 2월은 다음 해로 계산
+        if (m === 1 || m === 2) y += 1;
+
+        days.forEach(d => {
+            const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            enabledDates.push(dateStr);
+        });
+    });
+    return enabledDates;
 }
 
-// ✅ [신규] 가장 가까운 과거 수업일을 찾는 함수
+// ✅ [신규] 수업이 있는 "월" 리스트 반환 (YYYY-MM)
+function getEnableMonths() {
+    const year = CURRENT_YEAR;
+    if (!globalData[year] || !globalData[year].validDays) return [];
+    
+    const validMonths = [];
+    const keys = Object.keys(globalData[year].validDays);
+    
+    keys.forEach(monthStr => {
+        const m = parseInt(monthStr);
+        let y = parseInt(year);
+        if (m === 1 || m === 2) y += 1;
+        
+        validMonths.push(`${y}-${String(m).padStart(2,'0')}`);
+    });
+    return validMonths;
+}
+
+// ✅ [신규] 데이터 로드 후 Flatpickr 설정 업데이트 (핵심)
+function updateFlatpickrAllowedDates() {
+    const allowedDates = getEnableDates();
+    const allowedMonths = getEnableMonths();
+
+    // 1. 일별/기간 달력: enable 옵션으로 허용 날짜만 활성화
+    if (allowedDates.length > 0) {
+        if (mainFlatpickr) mainFlatpickr.set('enable', allowedDates);
+        if (statsDateFlatpickr) statsDateFlatpickr.set('enable', allowedDates);
+        if (statsStartFlatpickr) statsStartFlatpickr.set('enable', allowedDates);
+        if (statsEndFlatpickr) statsEndFlatpickr.set('enable', allowedDates);
+    }
+
+    // 2. 월별 달력: disable 함수로 허용되지 않은 월 비활성화
+    // (MonthSelect 플러그인은 enable 배열을 직접 지원하지 않는 경우가 많아 disable 함수 사용)
+    if (statsMonthFlatpickr && allowedMonths.length > 0) {
+        statsMonthFlatpickr.set('disable', [
+            function(date) {
+                // date가 allowedMonths에 포함되어 있지 않으면 disable(true)
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const ym = `${y}-${m}`;
+                return !allowedMonths.includes(ym);
+            }
+        ]);
+    }
+}
+
 function findMostRecentSchoolDay(startDate) {
-    // 최대 60일까지 과거로 탐색
     const limit = 60;
     let checkDate = new Date(startDate);
     
+    // 간단히 isValidSchoolDay 대신 getEnableDates 결과 활용 가능하나
+    // 기존 로직 유지를 위해 그대로 둠
     for (let i = 0; i < limit; i++) {
         if (isValidSchoolDay(checkDate)) {
             return checkDate;
         }
         checkDate.setDate(checkDate.getDate() - 1);
     }
-    // 못 찾으면 그냥 오늘 날짜 반환 (오류 방지)
     return startDate;
 }
 
+function isValidSchoolDay(dateObj) {
+    const year = CURRENT_YEAR;
+    if (!globalData[year] || !globalData[year].validDays) return true; 
+
+    const m = (dateObj.getMonth() + 1).toString();
+    const d = dateObj.getDate();
+    
+    const validList = globalData[year].validDays[m];
+    if (!validList) return false; 
+    return validList.includes(d);
+}
 
 function updateDateLabel() {
-  const dateInput = document.getElementById('mainDatePicker');
   const label = document.getElementById('dateDisplayLabel');
   
   const yyyy = activeDate.getFullYear();
   const mm = String(activeDate.getMonth() + 1).padStart(2, '0');
   const dd = String(activeDate.getDate()).padStart(2, '0');
   
-  dateInput.value = `${yyyy}-${mm}-${dd}`;
+  if (mainFlatpickr) {
+      mainFlatpickr.setDate(`${yyyy}-${mm}-${dd}`, false); 
+  }
+  
   label.innerText = `${mm}-${dd}`;
 }
 
@@ -204,7 +261,6 @@ function updateDateLabel() {
 // 화면 전환 및 홈 화면
 // =======================================================
 function goHome(fromHistory = false) {
-  // ✅ [수정] 저장 안 된 데이터가 있으면 이동 불가 (모달 띄움)
   if (Object.keys(pendingChanges).length > 0) {
     showMessageModal("저장하지 않은 데이터가 있습니다.\n먼저 저장하세요.");
     if(fromHistory) history.pushState({ view: 'sub' }, '', '');
@@ -230,6 +286,8 @@ async function fetchInitDataFromFirebase() {
     if (snapshot.exists()) {
       globalData = snapshot.val();
       renderHomeScreenClassButtons();
+      // ✅ 데이터 로드 후 달력 갱신
+      updateFlatpickrAllowedDates();
     }
   } catch (error) {
     console.error(error);
@@ -309,9 +367,6 @@ async function renderHomeScreenClassButtons() {
 function enterAttendanceMode(grade, cls) {
   currentSelectedClass = `${grade}-${cls}`;
   
-  // ✅ [수정 완료: 기능 2] 입장 시 자동으로 '가장 최근 수업일' 찾기
-  // 오늘 날짜를 기준으로 과거를 탐색해서, 수업이 있는 날짜로 activeDate를 세팅함.
-  // 이렇게 하면 "데이터 없음" 메시지를 볼 필요가 없음.
   activeDate = findMostRecentSchoolDay(new Date());
   
   updateDateLabel();
@@ -321,9 +376,6 @@ function enterAttendanceMode(grade, cls) {
   loadStudents();
 }
 
-// =======================================================
-// 데이터 로드 및 렌더링
-// =======================================================
 async function loadStudents() {
   pendingChanges = {};
   updateSaveButtonUI(); 
@@ -465,10 +517,8 @@ function renderTable(data) {
 }
 
 async function toggleDateConfirmation(dayStr) {
-  // ✅ [수정] 저장 안 된 데이터가 있으면 모달을 띄우고 중단
   if (Object.keys(pendingChanges).length > 0) {
       showMessageModal("아직 저장안된 데이터가 있습니다.\n변경된 사항을 저장한 후에 다시 시도하세요.");
-      // 체크박스 상태 원복
       const checkbox = document.getElementById('chkConfirmDay');
       checkbox.checked = !checkbox.checked;
       return;
@@ -946,11 +996,53 @@ async function enterStatsMode() {
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const dd = String(today.getDate()).padStart(2, '0');
   const todayStr = `${yyyy}-${mm}-${dd}`;
+  const thisMonthStr = `${yyyy}-${mm}`;
 
-  document.getElementById('statsDateInput').value = todayStr;
-  document.getElementById('statsMonthInput').value = `${yyyy}-${mm}`;
-  document.getElementById('statsStartDate').value = todayStr;
-  document.getElementById('statsEndDate').value = todayStr;
+  const dateInput = document.getElementById('statsDateInput');
+  const monthInput = document.getElementById('statsMonthInput');
+  const startInput = document.getElementById('statsStartDate');
+  const endInput = document.getElementById('statsEndDate');
+
+  // 기본값 설정
+  dateInput.value = todayStr;
+  monthInput.value = thisMonthStr;
+  startInput.value = todayStr;
+  endInput.value = todayStr;
+
+  // ✅ [수정] 통계용 Flatpickr 적용
+  // 1. 일별 통계 (수업 있는 날만 enable)
+  statsDateFlatpickr = flatpickr("#statsDateInput", {
+      locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
+      enable: getEnableDates() 
+  });
+  
+  // 2. 월별 통계 (수업 있는 달만 enable - Plugin 사용)
+  statsMonthFlatpickr = flatpickr("#statsMonthInput", {
+      locale: "ko", 
+      disableMobile: true,
+      plugins: [
+          new monthSelectPlugin({
+            shorthand: true, // ex: "2025-03"
+            dateFormat: "Y-m", 
+            theme: "light"
+          })
+      ],
+      // 초기에는 빈 disable 함수(나중에 데이터 로드 후 업데이트됨)
+      disable: []
+  });
+
+  // 3. 기간 통계 (수업 있는 날만 enable)
+  statsStartFlatpickr = flatpickr("#statsStartDate", {
+      locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
+      enable: getEnableDates() 
+  });
+  statsEndFlatpickr = flatpickr("#statsEndDate", {
+      locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
+      enable: getEnableDates() 
+  });
+  
+  // 이미 데이터가 로드된 상태라면 즉시 업데이트
+  updateFlatpickrAllowedDates();
 
   renderStatsFilters();
   updateStatsInputVisibility();
@@ -1019,23 +1111,18 @@ async function runStatsSearch() {
   let filterEndDate = null;
   let displayTitle = "";
 
-  const today = new Date(); // 오늘 날짜
+  const today = new Date(); 
 
+  // ✅ [수정] Flatpickr가 이미 선택을 제한하므로, 별도의 경고 로직(isValidSchoolDay 체크 등) 제거
+  
   if (mode === 'daily') {
     const dateStr = document.getElementById('statsDateInput').value; 
     if(!dateStr) { alert("날짜를 선택해주세요."); return; }
     const d = new Date(dateStr);
     
-    // ✅ [수정 완료: 기능 4] 미래 조회 차단
-    if (d > today) {
-        container.innerHTML = '<div style="padding:40px; text-align:center; color:#888;">아직 조회할 수 없습니다.</div>';
-        return;
-    }
-
     filterStartDate = d;
     filterEndDate = d;
     
-    // ✅ [수정] 1,2월은 작년 학년도로 계산
     let qMonth = d.getMonth() + 1;
     let qYear = d.getFullYear();
     if (qMonth <= 2) qYear -= 1; 
@@ -1053,7 +1140,7 @@ async function runStatsSearch() {
     let mYear = parseInt(parts[0]);
     let mMonth = parseInt(parts[1]);
     
-    // ✅ [수정 완료: 기능 4] 미래 월 조회 차단 (단순 비교)
+    // ✅ 미래 월 체크도 Flatpickr가 막아주지만 이중 체크 차원에서 남김(나쁠 건 없음)
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth() + 1;
     if (mYear > currentYear || (mYear === currentYear && mMonth > currentMonth)) {
@@ -1081,12 +1168,6 @@ async function runStatsSearch() {
     
     if(filterStartDate > filterEndDate) { alert("날짜 범위 오류"); return; }
     
-    // ✅ [수정 완료: 기능 4] 시작일이 미래인 경우 차단
-    if (filterStartDate > today) {
-         container.innerHTML = '<div style="padding:40px; text-align:center; color:#888;">아직 조회할 수 없습니다.</div>';
-         return;
-    }
-
     displayTitle = `${startStr} ~ ${endStr} 통계`;
 
     let curr = new Date(filterStartDate.getFullYear(), filterStartDate.getMonth(), 1);
