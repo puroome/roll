@@ -70,20 +70,38 @@ document.addEventListener('DOMContentLoaded', () => {
   window.showStudentSummary = showStudentSummary;
   window.showMessageModal = showMessageModal;
 
-  // [수정됨] 위치 옵션 토글 및 실행 함수 등록
+  // [수정됨] 위치 옵션 토글 및 실행 함수 (통화/문자 숨김 처리 포함)
   window.toggleLocationOptions = () => {
-      const el = document.getElementById('locationOptionsBox');
-      if(el) el.style.display = (el.style.display === 'none') ? 'flex' : 'none';
+      const box = document.getElementById('locationOptionsBox');
+      const btnCall = document.getElementById('btnCall');
+      const btnText = document.getElementById('btnText');
+      const btnLoc = document.getElementById('btnLocation');
+
+      if (!box || !btnCall || !btnText || !btnLoc) return;
+
+      if (box.style.display === 'none') {
+          // 활성화: 통화/문자 숨기고 위치버튼 회색처리, 옵션창 표시
+          btnCall.style.display = 'none';
+          btnText.style.display = 'none';
+          btnLoc.classList.add('btn-gray-active');
+          box.style.display = 'flex';
+      } else {
+          // 비활성화: 원상복구
+          btnCall.style.display = 'flex';
+          btnText.style.display = 'flex';
+          btnLoc.classList.remove('btn-gray-active');
+          box.style.display = 'none';
+      }
   };
+
   window.execLocationRequest = () => {
       if(currentSmsUri) window.location.href = currentSmsUri;
-      const el = document.getElementById('locationOptionsBox');
-      if(el) el.style.display = 'none';
+      window.toggleLocationOptions(); // 작업 후 상태 초기화
   };
+  
   window.execLocationCheck = () => {
-      window.open("https://puroome.github.io/pin/check/", "_blank");
-      const el = document.getElementById('locationOptionsBox');
-      if(el) el.style.display = 'none';
+      window.open("https://puroome.github.io/pin/admin/", "_blank");
+      window.toggleLocationOptions(); // 작업 후 상태 초기화
   };
   
   // ✅ Flatpickr 초기화
@@ -1072,15 +1090,16 @@ function showStudentSummary(studentNo, studentName) {
     // [수정됨] 전역 변수에 URI 저장
     currentSmsUri = `sms:${phone}?body=${encodedBody}`;
 
+    // [수정됨] ID 부여 (btnCall, btnText, btnLocation)
     contactHtml = `
       <div class="contact-btn-group">
-          <a href="tel:${phone}" class="contact-btn btn-pastel-blue">
+          <a id="btnCall" href="tel:${phone}" class="contact-btn btn-pastel-blue">
              📞 통화
           </a>
-          <a href="sms:${phone}" class="contact-btn btn-pastel-green">
+          <a id="btnText" href="sms:${phone}" class="contact-btn btn-pastel-green">
              📩 문자
           </a>
-          <div class="contact-btn btn-pastel-red" onclick="toggleLocationOptions()" style="cursor:pointer;">
+          <div id="btnLocation" class="contact-btn btn-pastel-red" onclick="toggleLocationOptions()" style="cursor:pointer;">
              📍 위치
           </div>
       </div>
@@ -1804,4 +1823,3 @@ function convertSymbolToText(symbol) {
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
 }
-
