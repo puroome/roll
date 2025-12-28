@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
 
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body class="overscroll-y-none">
   
@@ -44,7 +44,7 @@
   </div>
 
   <div id="studentModal" class="modal-overlay">
-    <div class="modal-box" style="position: relative;">
+    <div class="modal-box relative-container">
       <span class="close-x-btn" onclick="closeStudentModal()">×</span>
       
       <div id="studentModalTitle" class="modal-title">학생 이름</div>
@@ -65,7 +65,7 @@
         <h2>🏫 담임교사 출석확인</h2>
         <p>담임반을 선택하면<br>오늘 날짜 출석부로 이동합니다.</p>
         <div id="classButtonContainer" class="class-grid">
-          <div style="grid-column: 1/-1; text-align: center; color: #888;">데이터 로딩 중...</div>
+          <div class="message-full text-gray">데이터 로딩 중...</div>
         </div>
       </div>
     </div>
@@ -75,7 +75,7 @@
     <div class="controls">
       <div class="control-row">
         <div class="group-left">
-          <input type="text" id="mainDatePicker" style="position: absolute; opacity: 0; width: 1px; height: 1px;">
+          <input type="text" id="mainDatePicker" class="hidden-input">
           <button id="btnDateTrigger" class="date-trigger-btn">
             <span id="dateDisplayLabel">--.--</span> 📅
           </button>
@@ -102,11 +102,11 @@
           <input type="text" id="reasonInput" placeholder="사유" disabled>
         </div>
       </div>
-      <div style="height:0px; overflow:hidden;"><span id="loading">Loading...</span></div>
+      <div class="hidden-wrapper"><span id="loading">Loading...</span></div>
     </div>
 
     <div id="tableContainer" class="table-wrapper">
-      <div style="padding:40px; text-align:center; color:#888;">데이터 로딩 중...</div>
+      <div class="message-box-lg text-gray">데이터 로딩 중...</div>
     </div>
   </div>
 
@@ -120,8 +120,8 @@
            </svg>
         </button>
         
-        <h3 style="margin:0; font-size:22px; font-weight:800; color:#222; letter-spacing:-0.5px;">출석 통계</h3>
-        <div style="width:60px;"></div>
+        <h3 class="stats-header-title">출석 통계</h3>
+        <div class="stats-header-spacer"></div>
       </div>
 
       <div class="stats-radio-container">
@@ -133,36 +133,36 @@
           </div>
         </div>
 
-        <div style="width: 100%; display: flex; justify-content: center; margin-top:5px; flex-direction: column; align-items: center;">
+        <div class="w-full flex-center-col" style="margin-top:5px;">
           
-          <div id="dailyWrapper" style="position: relative;">
-            <input type="text" id="statsDateInput" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;">
-            <button id="btnStatsDateTrigger" class="date-trigger-btn" style="width: 160px; justify-content: center;">
+          <div id="dailyWrapper" class="relative-container">
+            <input type="text" id="statsDateInput" class="hidden-input">
+            <button id="btnStatsDateTrigger" class="date-trigger-btn stats-date-trigger">
               <span id="txtStatsDate">----.--.--</span> 📅
             </button>
           </div>
 
-          <div id="monthlyWrapper" style="display:none; position: relative;">
-             <input type="text" id="statsMonthInput" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;">
-             <button id="btnStatsMonthTrigger" class="date-trigger-btn" style="width: 160px; justify-content: center;">
+          <div id="monthlyWrapper" class="relative-container" style="display:none;">
+             <input type="text" id="statsMonthInput" class="hidden-input">
+             <button id="btnStatsMonthTrigger" class="date-trigger-btn stats-date-trigger">
                <span id="txtStatsMonth">----.--</span> 📅
              </button>
           </div>
           
           <div id="statsPeriodInput" class="period-group" style="display:none;">
             
-            <div style="position: relative;">
-              <input type="text" id="statsStartDate" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;">
-              <button id="btnStatsStartTrigger" class="date-trigger-btn" style="width: 130px; justify-content: center; padding: 6px 4px;">
+            <div class="relative-container">
+              <input type="text" id="statsStartDate" class="hidden-input">
+              <button id="btnStatsStartTrigger" class="date-trigger-btn stats-period-trigger">
                 <span id="txtStatsStart">----.--.--</span> 📅
               </button>
             </div>
             
             <span class="period-separator">~</span>
             
-            <div style="position: relative;">
-               <input type="text" id="statsEndDate" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;">
-               <button id="btnStatsEndTrigger" class="date-trigger-btn" style="width: 130px; justify-content: center; padding: 6px 4px;">
+            <div class="relative-container">
+               <input type="text" id="statsEndDate" class="hidden-input">
+               <button id="btnStatsEndTrigger" class="date-trigger-btn stats-period-trigger">
                  <span id="txtStatsEnd">----.--.--</span> 📅
                </button>
             </div>
@@ -173,7 +173,7 @@
       </div>
 
       <div id="statsFilterContainer" class="filter-container">
-        <div style="color:#888; font-size:12px;">반 정보를 불러오는 중...</div>
+        <div class="text-gray" style="font-size:12px;">반 정보를 불러오는 중...</div>
       </div>
 
       <button id="btnSearchStats" class="action-btn-full">조회하기</button>
@@ -181,7 +181,7 @@
     </div>
 
     <div id="statsContainer" class="stats-wrapper">
-      <div style="padding:40px; text-align:center; color:#888;">조건을 선택하고<br>[조회하기]를 눌러주세요.</div>
+      <div class="message-box-lg text-gray">조건을 선택하고<br>[조회하기]를 눌러주세요.</div>
     </div>
   </div>
 
@@ -189,7 +189,7 @@
   <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
   
-  <script type="module" src="script.js?v=14"></script>
+  <script type="module" src="script.js?v=15"></script>
 
   <script>
     if ('serviceWorker' in navigator) {
