@@ -16,7 +16,7 @@ const db = getDatabase(app);
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGOrVUl3r1fRjDrPXnG7uycNL0547aOrSdTiXLbG2ggooANum2hX4NFFg/exec";
 
 let globalData = {}; 
-let currentSmsUri = ""; // [수정됨] 현재 선택된 학생의 SMS URI 저장
+let currentSmsUri = ""; 
 
 // [유틸리티: 학년도 계산 통합]
 function getSchoolYear(dateObj) {
@@ -70,38 +70,25 @@ document.addEventListener('DOMContentLoaded', () => {
   window.showStudentSummary = showStudentSummary;
   window.showMessageModal = showMessageModal;
 
-  // [수정됨] 위치 옵션 토글 및 실행 함수 (통화/문자 숨김 처리 포함)
-  window.toggleLocationOptions = () => {
-      const box = document.getElementById('locationOptionsBox');
-      const btnCall = document.getElementById('btnCall');
-      const btnText = document.getElementById('btnText');
-      const btnLoc = document.getElementById('btnLocation');
-
-      if (!box || !btnCall || !btnText || !btnLoc) return;
-
-      if (box.style.display === 'none') {
-          // 활성화: 통화/문자 숨기고 위치버튼 회색처리, 옵션창 표시
-          btnCall.style.display = 'none';
-          btnText.style.display = 'none';
-          btnLoc.classList.add('btn-gray-active');
-          box.style.display = 'flex';
-      } else {
-          // 비활성화: 원상복구
-          btnCall.style.display = 'flex';
-          btnText.style.display = 'flex';
-          btnLoc.classList.remove('btn-gray-active');
-          box.style.display = 'none';
+  // [수정됨] 위치 토글 및 실행 함수
+  window.toggleLocationMode = () => {
+      const container = document.getElementById('contactBtnContainer');
+      if(container) {
+          // 클래스 토글로 CSS 애니메이션 트리거
+          container.classList.toggle('options-active');
       }
   };
 
   window.execLocationRequest = () => {
       if(currentSmsUri) window.location.href = currentSmsUri;
-      window.toggleLocationOptions(); // 작업 후 상태 초기화
+      // 실행 후 원래대로 복귀하고 싶다면 아래 주석 해제
+      // toggleLocationMode(); 
   };
   
   window.execLocationCheck = () => {
       window.open("https://puroome.github.io/pin/admin/", "_blank");
-      window.toggleLocationOptions(); // 작업 후 상태 초기화
+      // 실행 후 원래대로 복귀하고 싶다면 아래 주석 해제
+      // toggleLocationMode();
   };
   
   // ✅ Flatpickr 초기화
@@ -1072,7 +1059,7 @@ function showStudentSummary(studentNo, studentName) {
   // [수정] 인라인 스타일 -> CSS 클래스
   titleEl.innerHTML = `${studentName} <span class="student-modal-subtitle">(${studentNo}번)</span> <span class="student-modal-month">${month}</span>월 출결사항`;
   
-  // 연락처 및 3단 버튼 생성
+  // 연락처 및 버튼 그룹 (토글 방식 적용)
   let contactHtml = "";
   const phone = student.phone ? student.phone.replace(/[^0-9]/g, '') : ""; 
   
@@ -1090,22 +1077,21 @@ function showStudentSummary(studentNo, studentName) {
     // [수정됨] 전역 변수에 URI 저장
     currentSmsUri = `sms:${phone}?body=${encodedBody}`;
 
-    // [수정됨] ID 부여 (btnCall, btnText, btnLocation)
     contactHtml = `
-      <div class="contact-btn-group">
-          <a id="btnCall" href="tel:${phone}" class="contact-btn btn-pastel-blue">
-             📞 통화
-          </a>
-          <a id="btnText" href="sms:${phone}" class="contact-btn btn-pastel-green">
-             📩 문자
-          </a>
-          <div id="btnLocation" class="contact-btn btn-pastel-red" onclick="toggleLocationOptions()" style="cursor:pointer;">
-             📍 위치
+      <div id="contactBtnContainer" class="contact-container">
+          <div class="contact-swap-area">
+              <div class="btn-group-default">
+                  <a href="tel:${phone}" class="contact-btn btn-pastel-blue">📞 통화</a>
+                  <a href="sms:${phone}" class="contact-btn btn-pastel-green">📩 문자</a>
+              </div>
+              <div class="btn-group-options">
+                  <div class="contact-btn btn-pastel-blue" onclick="execLocationRequest()">❓ 요청</div>
+                  <div class="contact-btn btn-pastel-blue" onclick="execLocationCheck()">❗ 확인</div>
+              </div>
           </div>
-      </div>
-      <div id="locationOptionsBox" class="location-options-box" style="display:none;">
-          <button class="loc-opt-btn btn-request" onclick="execLocationRequest()">❓ 요청</button>
-          <button class="loc-opt-btn btn-check" onclick="execLocationCheck()">❗ 확인</button>
+          <div class="btn-location-toggle btn-pastel-red" onclick="toggleLocationMode()">
+              📍 위치
+          </div>
       </div>
     `;
   } else {
