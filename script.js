@@ -987,7 +987,7 @@ function generateSummaryHtml(attendanceList) {
 }
 
 // =======================================================
-// [통계 기능] (수정됨: 학년도 데이터 조회 로직 적용)
+// [통계 기능] (✅ 수정됨: UI 버튼 연결 및 연도 표시)
 // =======================================================
 async function enterStatsMode() {
   history.pushState({ mode: 'stats' }, '', '');
@@ -1011,7 +1011,13 @@ async function enterStatsMode() {
   const startInput = document.getElementById('statsStartDate');
   const endInput = document.getElementById('statsEndDate');
 
-  // 기본값 설정
+  // ✅ UI 업데이트용 요소
+  const txtDate = document.getElementById('txtStatsDate');
+  const txtMonth = document.getElementById('txtStatsMonth');
+  const txtStart = document.getElementById('txtStatsStart');
+  const txtEnd = document.getElementById('txtStatsEnd');
+
+  // 기본값 설정 (Input Value)
   dateInput.value = todayStr;
   monthInput.value = thisMonthStr;
   startInput.value = todayStr;
@@ -1032,14 +1038,23 @@ async function enterStatsMode() {
   const f_dd = String(firstDay.getDate()).padStart(2, '0');
   const firstDayStr = `${f_yyyy}-${f_mm}-${f_dd}`;
 
-  // 1. 일별 통계
+  // 1. 일별 통계 (UI 연결 추가)
+  txtDate.innerText = recentDayStr; // 초기값 표시
+
   statsDateFlatpickr = flatpickr("#statsDateInput", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
-      defaultDate: recentDayStr, // 기본값 지정
-      enable: getEnableDates() 
+      defaultDate: recentDayStr, 
+      enable: getEnableDates(),
+      onChange: (selectedDates, dateStr) => {
+          txtDate.innerText = dateStr; // 선택 시 텍스트 업데이트
+      }
   });
+  // 버튼 클릭 시 달력 열기
+  document.getElementById('btnStatsDateTrigger').onclick = () => statsDateFlatpickr.open();
   
-  // 2. 월별 통계 (✅ 미래 차단 추가)
+  // 2. 월별 통계 (UI 연결 추가)
+  txtMonth.innerText = recentMonthStr; // 초기값 표시
+
   statsMonthFlatpickr = flatpickr("#statsMonthInput", {
       locale: "ko", 
       disableMobile: true,
@@ -1050,22 +1065,39 @@ async function enterStatsMode() {
             theme: "light"
           })
       ],
-      maxDate: "today", // ✅ [수정] 미래 월 선택 차단
-      defaultDate: recentMonthStr, // 기본값 지정
-      disable: [] // 나중에 업데이트됨
+      maxDate: "today", 
+      defaultDate: recentMonthStr, 
+      disable: [],
+      onChange: (selectedDates, dateStr) => {
+          txtMonth.innerText = dateStr; // 선택 시 텍스트 업데이트
+      }
   });
+  // 버튼 클릭 시 달력 열기
+  document.getElementById('btnStatsMonthTrigger').onclick = () => statsMonthFlatpickr.open();
 
-  // 3. 기간 통계
+  // 3. 기간 통계 (UI 연결 추가)
+  txtStart.innerText = firstDayStr;
+  txtEnd.innerText = recentDayStr;
+
   statsStartFlatpickr = flatpickr("#statsStartDate", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
-      defaultDate: firstDayStr, // 기본값 지정
-      enable: getEnableDates() 
+      defaultDate: firstDayStr, 
+      enable: getEnableDates(),
+      onChange: (selectedDates, dateStr) => {
+          txtStart.innerText = dateStr; // 선택 시 텍스트 업데이트
+      } 
   });
+  document.getElementById('btnStatsStartTrigger').onclick = () => statsStartFlatpickr.open();
+
   statsEndFlatpickr = flatpickr("#statsEndDate", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
-      defaultDate: recentDayStr, // 기본값 지정
-      enable: getEnableDates() 
+      defaultDate: recentDayStr, 
+      enable: getEnableDates(),
+      onChange: (selectedDates, dateStr) => {
+          txtEnd.innerText = dateStr; // 선택 시 텍스트 업데이트
+      }
   });
+  document.getElementById('btnStatsEndTrigger').onclick = () => statsEndFlatpickr.open();
   
   updateFlatpickrAllowedDates();
 
