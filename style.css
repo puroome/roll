@@ -313,7 +313,10 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 
 .btn-pastel-blue { background-color: #e3f2fd; color: #1565c0; }   
 .btn-pastel-green { background-color: #e8f5e9; color: #2e7d32; }  
-.btn-pastel-red { background-color: #ffebee; color: #c62828; }    
+.btn-pastel-red { background-color: #ffebee; color: #c62828; } 
+
+/* [수정됨] 회색 버튼 (위치 활성화 시) */
+.btn-gray-active { background-color: #e0e0e0 !important; color: #888 !important; pointer-events: auto; }
 
 .overscroll-y-none { overscroll-behavior-y: none; }
 
@@ -485,14 +488,19 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .badge-unconfirmed { font-size: 12px; color: red; margin-left: 8px; }
 .text-red-small { font-size: 12px; color: red; margin-left: 5px; }
 
-/* [수정됨] 위치 선택창 (심플한 버튼 row) */
+/* [수정됨] 위치 선택창 (심플한 버튼 row) + 우측 정렬 */
 .location-options-box {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end; /* 우측 정렬 */
   gap: 10px;
   margin-bottom: 20px; 
   margin-top: -10px;
+  width: 100%;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
   animation: fadeIn 0.2s;
+  box-sizing: border-box;
 }
 .loc-opt-btn {
   padding: 8px 16px;
