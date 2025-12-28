@@ -119,14 +119,28 @@
         </div>
 
         <div style="width: 100%; display: flex; justify-content: center; margin-top:5px;">
-          <input type="text" id="statsDateInput" class="date-picker">
-          <input type="text" id="statsMonthInput" class="date-picker" style="display:none;" placeholder="월 선택">
+          <div id="dailyWrapper" class="date-input-wrapper">
+            <input type="text" id="statsDateInput" class="date-picker">
+            <span class="calendar-icon-overlay">📅</span>
+          </div>
+
+          <div id="monthlyWrapper" class="date-input-wrapper" style="display:none;">
+             <input type="text" id="statsMonthInput" class="date-picker">
+             <span class="calendar-icon-overlay">📅</span>
+          </div>
           
           <div id="statsPeriodInput" class="period-group">
-            <input type="text" id="statsStartDate" class="date-picker" style="width: 130px;">
+            <div class="date-input-wrapper">
+              <input type="text" id="statsStartDate" class="date-picker">
+              <span class="calendar-icon-overlay">📅</span>
+            </div>
             <span class="period-separator">~</span>
-            <input type="text" id="statsEndDate" class="date-picker" style="width: 130px;">
+            <div class="date-input-wrapper">
+               <input type="text" id="statsEndDate" class="date-picker">
+               <span class="calendar-icon-overlay">📅</span>
+            </div>
           </div>
+
         </div>
       </div>
 
