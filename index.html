@@ -118,27 +118,40 @@
           </div>
         </div>
 
-        <div style="width: 100%; display: flex; justify-content: center; margin-top:5px;">
-          <div id="dailyWrapper" class="date-input-wrapper">
-            <input type="text" id="statsDateInput" class="date-picker">
-            <span class="calendar-icon-overlay">📅</span>
+        <div style="width: 100%; display: flex; justify-content: center; margin-top:5px; flex-direction: column; align-items: center;">
+          
+          <div id="dailyWrapper" style="position: relative;">
+            <input type="text" id="statsDateInput" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;">
+            <button id="btnStatsDateTrigger" class="date-trigger-btn" style="width: 160px; justify-content: center;">
+              <span id="txtStatsDate">----.--.--</span> 📅
+            </button>
           </div>
 
-          <div id="monthlyWrapper" class="date-input-wrapper" style="display:none;">
-             <input type="text" id="statsMonthInput" class="date-picker">
-             <span class="calendar-icon-overlay">📅</span>
+          <div id="monthlyWrapper" style="display:none; position: relative;">
+             <input type="text" id="statsMonthInput" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;">
+             <button id="btnStatsMonthTrigger" class="date-trigger-btn" style="width: 160px; justify-content: center;">
+               <span id="txtStatsMonth">----.--</span> 📅
+             </button>
           </div>
           
-          <div id="statsPeriodInput" class="period-group">
-            <div class="date-input-wrapper">
-              <input type="text" id="statsStartDate" class="date-picker">
-              <span class="calendar-icon-overlay">📅</span>
+          <div id="statsPeriodInput" class="period-group" style="display:none;">
+            
+            <div style="position: relative;">
+              <input type="text" id="statsStartDate" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;">
+              <button id="btnStatsStartTrigger" class="date-trigger-btn" style="width: 130px; justify-content: center; padding: 6px 4px;">
+                <span id="txtStatsStart">----.--.--</span> 📅
+              </button>
             </div>
+            
             <span class="period-separator">~</span>
-            <div class="date-input-wrapper">
-               <input type="text" id="statsEndDate" class="date-picker">
-               <span class="calendar-icon-overlay">📅</span>
+            
+            <div style="position: relative;">
+               <input type="text" id="statsEndDate" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0;">
+               <button id="btnStatsEndTrigger" class="date-trigger-btn" style="width: 130px; justify-content: center; padding: 6px 4px;">
+                 <span id="txtStatsEnd">----.--.--</span> 📅
+               </button>
             </div>
+
           </div>
 
         </div>
