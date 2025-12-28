@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ✅ Flatpickr 초기화
   setupDatePicker();
   
-  // ✅ 플로팅 저장 버튼 생성
+  // ✅ 드래그 가능한 플로팅 저장 버튼 생성
   createFloatingSaveButton();
 
   document.getElementById('modalCancelBtn').addEventListener('click', hideConfirmModal);
@@ -112,14 +112,99 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchInitDataFromFirebase();
 });
 
-// ✅ 플로팅 저장 버튼 생성 함수
+// ✅ [신규] 드래그 가능한 플로팅 저장 버튼 생성 및 이벤트 연결
 function createFloatingSaveButton() {
     const btn = document.createElement('div');
     btn.id = 'floatingSaveBtn';
     btn.className = 'floating-save-btn';
     btn.innerHTML = '저장'; 
-    btn.onclick = onSaveBtnClick;
     document.body.appendChild(btn);
+
+    // 드래그 관련 변수
+    let active = false;
+    let currentX;
+    let currentY;
+    let initialX;
+    let initialY;
+    let xOffset = 0;
+    let yOffset = 0;
+    
+    // 클릭 vs 드래그 구분용 변수
+    let startClickX = 0;
+    let startClickY = 0;
+
+    // 터치 이벤트
+    btn.addEventListener("touchstart", dragStart, false);
+    btn.addEventListener("touchend", dragEnd, false);
+    btn.addEventListener("touchmove", drag, false);
+
+    // 마우스 이벤트 (PC 테스트용)
+    btn.addEventListener("mousedown", dragStart, false);
+    document.addEventListener("mouseup", dragEnd, false);
+    document.addEventListener("mousemove", drag, false);
+
+    function dragStart(e) {
+      if (e.type === "touchstart") {
+        initialX = e.touches[0].clientX - xOffset;
+        initialY = e.touches[0].clientY - yOffset;
+        startClickX = e.touches[0].clientX;
+        startClickY = e.touches[0].clientY;
+      } else {
+        initialX = e.clientX - xOffset;
+        initialY = e.clientY - yOffset;
+        startClickX = e.clientX;
+        startClickY = e.clientY;
+      }
+
+      if (e.target === btn) {
+        active = true;
+      }
+    }
+
+    function dragEnd(e) {
+      initialX = currentX;
+      initialY = currentY;
+      active = false;
+      
+      // 드래그 거리가 짧으면(5px 미만) 클릭으로 간주하여 저장 실행
+      let endClickX, endClickY;
+      if (e.type === "touchend") {
+          // touchend에는 clientX/Y가 없으므로 changedTouches 사용
+          endClickX = e.changedTouches[0].clientX;
+          endClickY = e.changedTouches[0].clientY;
+      } else {
+          endClickX = e.clientX;
+          endClickY = e.clientY;
+      }
+
+      const dist = Math.hypot(endClickX - startClickX, endClickY - startClickY);
+      if (dist < 5 && e.target === btn) {
+          onSaveBtnClick();
+      }
+    }
+
+    function drag(e) {
+      if (active) {
+        e.preventDefault();
+      
+        if (e.type === "touchmove") {
+          currentX = e.touches[0].clientX - initialX;
+          currentY = e.touches[0].clientY - initialY;
+        } else {
+          currentX = e.clientX - initialX;
+          currentY = e.clientY - initialY;
+        }
+
+        xOffset = currentX;
+        yOffset = currentY;
+
+        setTranslate(currentX, currentY, btn);
+      }
+    }
+
+    function setTranslate(xPos, yPos, el) {
+      el.style.transform = "translate3d(" + xPos + "px, " + yPos + "px, 0)";
+    }
 }
 
 function showMessageModal(msg) {
