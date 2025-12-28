@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   
   window.execLocationCheck = () => {
-      window.open("https://puroome.github.io/pin/admin/", "_blank");
+      window.open("https://puroome.github.io/pin/check/", "_blank");
       // 실행 후 원래대로 복귀하고 싶다면 아래 주석 해제
       // toggleLocationMode();
   };
@@ -1809,5 +1809,6 @@ function convertSymbolToText(symbol) {
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
 }
+
 
 
