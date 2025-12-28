@@ -422,6 +422,9 @@ async function loadStudents() {
   }
 }
 
+// ✅ [수정] renderTable 함수 전면 수정
+// 1. 항상 7교시를 기준으로 레이아웃 생성
+// 2. 데이터가 없는 나머지 교시는 하나의 회색 블록(colspan)으로 통합
 function renderTable(data) {
   if (!data.confirmations) data.confirmations = {};
   
@@ -454,17 +457,24 @@ function renderTable(data) {
   const FIXED_WIDTH_NO = 30;   
   const FIXED_WIDTH_NAME = 55; 
   const MIN_CELL_WIDTH = 35;   
-  
-  const totalCols = dayRecords.length;
-  const minTableWidth = FIXED_WIDTH_NO + FIXED_WIDTH_NAME + (totalCols * MIN_CELL_WIDTH);
+
+  // ✅ [수정] 항상 7교시 기준
+  const MAX_PERIODS = 7;
+  const dataCount = dayRecords.length;
+  const remainingCount = Math.max(0, MAX_PERIODS - dataCount);
+
+  // ✅ [수정] 전체 너비를 7칸 기준으로 계산
+  const minTableWidth = FIXED_WIDTH_NO + FIXED_WIDTH_NAME + (MAX_PERIODS * MIN_CELL_WIDTH);
 
   let html = `<table style="min-width: ${minTableWidth}px;">`;
 
   html += '<colgroup>';
   html += `<col style="width: ${FIXED_WIDTH_NO}px;">`;
   html += `<col style="width: ${FIXED_WIDTH_NAME}px;">`;
-  for(let i=0; i<totalCols; i++) {
-    html += '<col>'; 
+  
+  // ✅ [수정] 7개의 열을 모두 생성하여 레이아웃 고정
+  for(let i = 0; i < MAX_PERIODS; i++) {
+      html += '<col>'; 
   }
   html += '</colgroup>';
 
@@ -477,11 +487,15 @@ function renderTable(data) {
   const headerClass = isConfirmed ? 'confirmed-header' : '';
   const statusText = isConfirmed ? '마감됨' : '마감하기';
 
+  // ✅ [수정] 헤더 colspan도 7교시에 맞게 조정 (dataCount + remainingCount)
+  // 나머지 영역이 있다면 1칸으로 합쳐지므로, colspan은 dataCount + 1이 됨 (만약 remaining > 0일때)
+  // 하지만 상단 제목행은 전체를 덮어야 하므로 MAX_PERIODS 사용
+  
   html += `
     <tr>
       <th rowspan="2" class="col-no">번호</th>
       <th rowspan="2" class="col-name" onclick="onSaveBtnClick()">이름</th>
-      <th colspan="${dayRecords.length}" class="header-day ${headerClass}">
+      <th colspan="${MAX_PERIODS}" class="header-day ${headerClass}">
         <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
           <span>${dateLabel}</span>
           <label style="font-size:12px; display:flex; align-items:center; cursor:pointer; background:rgba(255,255,255,0.5); padding:2px 6px; border-radius:4px;">
@@ -494,9 +508,16 @@ function renderTable(data) {
     <tr>
   `;
   
+  // ✅ [수정] 교시 헤더 생성
   dayRecords.forEach(r => {
     html += `<th>${r.period}</th>`;
   });
+  
+  // ✅ [수정] 남는 교시는 하나의 비활성 헤더로 통합
+  if (remainingCount > 0) {
+      html += `<th colspan="${remainingCount}" class="inactive-header"></th>`;
+  }
+  
   html += '</tr></thead><tbody>';
 
   data.students.forEach(std => {
@@ -504,6 +525,7 @@ function renderTable(data) {
     html += `<td>${std.no}</td>`;
     html += `<td class="col-name" onclick="showStudentSummary('${std.no}', '${std.name}')">${std.name}</td>`;
     
+    // ✅ [수정] 데이터가 있는 교시 렌더링
     dayRecords.forEach(headerRec => {
       const cellData = std.attendance.find(a => a.colIndex == headerRec.colIndex) || {};
       const val = cellData.value || "";
@@ -516,6 +538,12 @@ function renderTable(data) {
                data-col="${cellData.colIndex}" 
                data-day="${targetDay}"> ${displayHtml} </td>`;
     });
+
+    // ✅ [수정] 남는 교시는 하나의 비활성 셀로 통합
+    if (remainingCount > 0) {
+        html += `<td colspan="${remainingCount}" class="inactive-cell"></td>`;
+    }
+
     html += '</tr>';
   });
   html += '</tbody></table>';
@@ -1674,8 +1702,3 @@ function getRealYear(schoolYear, month) {
   }
   return y;
 }
-
-
-
-
-
