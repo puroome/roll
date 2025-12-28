@@ -17,6 +17,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGO
 
 let globalData = {}; 
 
+// [유틸리티: 학년도 계산 통합]
 function getSchoolYear(dateObj) {
     const m = dateObj.getMonth() + 1;
     const y = dateObj.getFullYear();
@@ -24,29 +25,38 @@ function getSchoolYear(dateObj) {
     return (m <= 2) ? (y - 1).toString() : y.toString();
 }
 
+// [유틸리티: 학년도+월 -> 실제 연도 계산]
+function getRealYear(schoolYear, month) {
+    const m = parseInt(month);
+    const y = parseInt(schoolYear);
+    return (m <= 2) ? y + 1 : y;
+}
+
 const CURRENT_YEAR = getSchoolYear(new Date());
 
-// [상태 변수]
-let activeDate = new Date(); 
-let currentSelectedClass = null; 
-let isMultiMode = false;
-let selectedCells = new Set();
-let dragStartAction = null;
-let longPressTimer = null;
-let dragStartCell = null;
-let pendingChanges = {};
-let lastTouchTime = 0;
-
-let pendingNavigation = null;
-let currentRenderedData = null; 
-let currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
-
-// ✅ Flatpickr 인스턴스 변수
-let mainFlatpickr = null;
-let statsDateFlatpickr = null;
-let statsMonthFlatpickr = null;
-let statsStartFlatpickr = null;
-let statsEndFlatpickr = null;
+// [상태 변수 그룹화]
+const state = {
+    activeDate: new Date(),
+    currentSelectedClass: null,
+    isMultiMode: false,
+    selectedCells: new Set(),
+    dragStartAction: null,
+    longPressTimer: null,
+    dragStartCell: null,
+    pendingChanges: {},
+    lastTouchTime: 0,
+    pendingNavigation: null,
+    currentRenderedData: null,
+    currentStatsTotalCounts: { '1': 0, '2': 0, '3': 0 },
+    // Flatpickr 인스턴스
+    pickers: {
+        main: null,
+        statsDate: null,
+        statsMonth: null,
+        statsStart: null,
+        statsEnd: null
+    }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   window.onSaveBtnClick = onSaveBtnClick;
@@ -78,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('contextmenu', event => event.preventDefault());
   
   window.addEventListener('beforeunload', function (e) {
-    if (Object.keys(pendingChanges).length > 0) {
+    if (Object.keys(state.pendingChanges).length > 0) {
       e.preventDefault();
       e.returnValue = '';
     }
@@ -220,7 +230,7 @@ function setupDatePicker() {
   const btnTrigger = document.getElementById('btnDateTrigger');
   
   // 메인 출석부용 달력
-  mainFlatpickr = flatpickr("#mainDatePicker", {
+  state.pickers.main = flatpickr("#mainDatePicker", {
       locale: "ko",
       dateFormat: "Y-m-d",
       disableMobile: true,
@@ -230,21 +240,21 @@ function setupDatePicker() {
       onChange: function(selectedDates, dateStr, instance) {
           if (!dateStr) return;
 
-          if (Object.keys(pendingChanges).length > 0) {
+          if (Object.keys(state.pendingChanges).length > 0) {
               showMessageModal("미저장 자료가 있습니다.\n먼저 저장하세요.");
-              instance.setDate(activeDate); 
+              instance.setDate(state.activeDate); 
               updateDateLabel();
               return;
           }
           
-          activeDate = new Date(dateStr);
+          state.activeDate = new Date(dateStr);
           updateDateLabel();
           loadStudents();
       }
   });
 
   btnTrigger.addEventListener('click', () => {
-    if (mainFlatpickr) mainFlatpickr.open();
+    if (state.pickers.main) state.pickers.main.open();
   });
   
   updateDateLabel();
@@ -260,9 +270,8 @@ function getEnableDates() {
     Object.keys(validDaysMap).forEach(monthStr => {
         const days = validDaysMap[monthStr];
         const m = parseInt(monthStr);
-        let y = parseInt(year);
-        // 1, 2월은 다음 해로 계산
-        if (m === 1 || m === 2) y += 1;
+        // [수정] getRealYear 사용으로 통일
+        const y = getRealYear(year, m);
 
         days.forEach(d => {
             const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -281,8 +290,8 @@ function getEnableMonths() {
     
     keys.forEach(monthStr => {
         const m = parseInt(monthStr);
-        let y = parseInt(year);
-        if (m === 1 || m === 2) y += 1;
+        // [수정] getRealYear 사용으로 통일
+        const y = getRealYear(year, m);
         
         validMonths.push(`${y}-${String(m).padStart(2,'0')}`);
     });
@@ -295,15 +304,15 @@ function updateFlatpickrAllowedDates() {
 
     // 1. 일별/기간 달력
     if (allowedDates.length > 0) {
-        if (mainFlatpickr) mainFlatpickr.set('enable', allowedDates);
-        if (statsDateFlatpickr) statsDateFlatpickr.set('enable', allowedDates);
-        if (statsStartFlatpickr) statsStartFlatpickr.set('enable', allowedDates);
-        if (statsEndFlatpickr) statsEndFlatpickr.set('enable', allowedDates);
+        if (state.pickers.main) state.pickers.main.set('enable', allowedDates);
+        if (state.pickers.statsDate) state.pickers.statsDate.set('enable', allowedDates);
+        if (state.pickers.statsStart) state.pickers.statsStart.set('enable', allowedDates);
+        if (state.pickers.statsEnd) state.pickers.statsEnd.set('enable', allowedDates);
     }
 
     // 2. 월별 달력
-    if (statsMonthFlatpickr && allowedMonths.length > 0) {
-        statsMonthFlatpickr.set('disable', [
+    if (state.pickers.statsMonth && allowedMonths.length > 0) {
+        state.pickers.statsMonth.set('disable', [
             function(date) {
                 const y = date.getFullYear();
                 const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -351,12 +360,12 @@ function isValidSchoolDay(dateObj) {
 function updateDateLabel() {
   const label = document.getElementById('dateDisplayLabel');
   
-  const yyyy = activeDate.getFullYear();
-  const mm = String(activeDate.getMonth() + 1).padStart(2, '0');
-  const dd = String(activeDate.getDate()).padStart(2, '0');
+  const yyyy = state.activeDate.getFullYear();
+  const mm = String(state.activeDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(state.activeDate.getDate()).padStart(2, '0');
   
-  if (mainFlatpickr) {
-      mainFlatpickr.setDate(`${yyyy}-${mm}-${dd}`, false); 
+  if (state.pickers.main) {
+      state.pickers.main.setDate(`${yyyy}-${mm}-${dd}`, false); 
   }
   
   label.innerText = `${mm}-${dd}`;
@@ -366,13 +375,13 @@ function updateDateLabel() {
 // 화면 전환 및 홈 화면
 // =======================================================
 function goHome(fromHistory = false) {
-  if (Object.keys(pendingChanges).length > 0) {
+  if (Object.keys(state.pendingChanges).length > 0) {
     showMessageModal("미저장 자료가 있습니다.\n먼저 저장하세요.");
     if(fromHistory) history.pushState({ view: 'sub' }, '', '');
     return;
   }
   
-  pendingChanges = {};
+  state.pendingChanges = {};
   updateSaveButtonUI();
 
   switchView('homeScreen');
@@ -400,11 +409,12 @@ async function fetchInitDataFromFirebase() {
 
 async function renderHomeScreenClassButtons() {
   const container = document.getElementById('classButtonContainer');
-  container.innerHTML = "<div style='grid-column:1/-1; text-align:center; color:#888;'>출결 현황 확인 중...</div>";
+  // [수정] 인라인 스타일 -> CSS 클래스
+  container.innerHTML = "<div class='message-full text-gray'>출결 현황 확인 중...</div>";
   
   const year = CURRENT_YEAR;
   if (!globalData[year]) {
-    container.innerHTML = `<div style="grid-column:1/-1; text-align:center;">${year}년 데이터 없음</div>`;
+    container.innerHTML = `<div class='message-full'>${year}년 데이터 없음</div>`;
     return;
   }
 
@@ -469,9 +479,9 @@ async function renderHomeScreenClassButtons() {
 }
 
 function enterAttendanceMode(grade, cls) {
-  currentSelectedClass = `${grade}-${cls}`;
+  state.currentSelectedClass = `${grade}-${cls}`;
   
-  activeDate = findMostRecentSchoolDay(new Date());
+  state.activeDate = findMostRecentSchoolDay(new Date());
   
   updateDateLabel();
 
@@ -481,12 +491,12 @@ function enterAttendanceMode(grade, cls) {
 }
 
 async function loadStudents() {
-  pendingChanges = {};
+  state.pendingChanges = {};
   updateSaveButtonUI(); 
   
   const year = CURRENT_YEAR;
-  const month = (activeDate.getMonth() + 1).toString();
-  const combinedVal = currentSelectedClass; 
+  const month = (state.activeDate.getMonth() + 1).toString();
+  const combinedVal = state.currentSelectedClass; 
 
   if (!combinedVal) return;
 
@@ -497,6 +507,10 @@ async function loadStudents() {
   const tableContainer = document.getElementById('tableContainer');
   tableContainer.innerHTML = ''; 
   
+  // [수정] 스켈레톤 인라인 스타일 -> CSS 클래스 (width는 유지 필요할 수 있으나 가능하면 클래스로)
+  // 여기서는 width가 레이아웃에 중요하므로 인라인 유지 혹은 별도 처리.
+  // 다만 요청 사항에 "긴 style 문자열" 정리이므로, 구조적 스타일은 클래스로 뺄 수 있음.
+  // 여기서는 간단히 유지하되, 반복되는 부분 최소화.
   const skeletonHTML = Array(10).fill(0).map(() => `
     <div class="skeleton-row">
       <div class="skeleton-box" style="width: 30px;"></div>
@@ -514,15 +528,17 @@ async function loadStudents() {
   try {
     const snapshot = await get(child(dbRef, path));
     if (snapshot.exists()) {
-      currentRenderedData = snapshot.val();
-      renderTable(currentRenderedData);
+      state.currentRenderedData = snapshot.val();
+      renderTable(state.currentRenderedData);
     } else {
-      currentRenderedData = null;
-      document.getElementById('tableContainer').innerHTML = '<div style="padding:20px; text-align:center;">데이터 없음</div>';
+      state.currentRenderedData = null;
+      // [수정] 인라인 스타일 -> 클래스
+      document.getElementById('tableContainer').innerHTML = '<div class="message-box">데이터 없음</div>';
     }
   } catch (error) {
     console.error(error);
-    document.getElementById('tableContainer').innerHTML = '<div style="padding:20px; text-align:center; color:red;">로드 실패</div>';
+    // [수정] 인라인 스타일 -> 클래스
+    document.getElementById('tableContainer').innerHTML = '<div class="message-box text-red">로드 실패</div>';
   } finally {
     document.getElementById('loading').style.display = 'none';
   }
@@ -534,15 +550,16 @@ function renderTable(data) {
   const container = document.getElementById('tableContainer');
   
   if (!data || data.error) { 
-    container.innerHTML = `<div style="padding:20px; text-align:center; color:red;">${data.error || '오류'}</div>`; 
+    // [수정] 인라인 스타일 -> 클래스
+    container.innerHTML = `<div class="message-box text-red">${data.error || '오류'}</div>`; 
     return; 
   }
   if (!data.students || data.students.length === 0) { 
-    container.innerHTML = '<div style="padding:20px; text-align:center;">학생 데이터가 없습니다.</div>'; 
+    container.innerHTML = '<div class="message-box">학생 데이터가 없습니다.</div>'; 
     return; 
   }
 
-  const targetDay = activeDate.getDate();
+  const targetDay = state.activeDate.getDate();
   const targetDayStr = targetDay.toString();
   
   const isConfirmed = data.confirmations[targetDayStr] === true;
@@ -551,7 +568,7 @@ function renderTable(data) {
   const dayRecords = sampleStudent.attendance.filter(a => a.day == targetDay);
   
   if (dayRecords.length === 0) {
-    container.innerHTML = `<div style="padding:20px; text-align:center;">${activeDate.getMonth()+1}월 ${targetDay}일 데이터가 없습니다.</div>`;
+    container.innerHTML = `<div class="message-box">${state.activeDate.getMonth()+1}월 ${targetDay}일 데이터가 없습니다.</div>`;
     return;
   }
 
@@ -569,6 +586,7 @@ function renderTable(data) {
 
   const htmlParts = [];
   
+  // 동적 너비 계산은 인라인 스타일 유지가 필요함
   htmlParts.push(`<table style="min-width: ${minTableWidth}px;">`);
   htmlParts.push('<colgroup>');
   htmlParts.push(`<col style="width: ${FIXED_WIDTH_NO}px;">`);
@@ -581,24 +599,24 @@ function renderTable(data) {
 
   htmlParts.push('<thead>');
   
-  const dayOfWeek = getDayOfWeek(activeDate);
-  const dateLabel = `${activeDate.getMonth()+1}/${targetDay}(${dayOfWeek})`;
+  const dayOfWeek = getDayOfWeek(state.activeDate);
+  const dateLabel = `${state.activeDate.getMonth()+1}/${targetDay}(${dayOfWeek})`;
 
   const checkedAttr = isConfirmed ? 'checked' : '';
   const headerClass = isConfirmed ? 'confirmed-header' : '';
   const statusText = isConfirmed ? '마감됨' : '마감하기';
   
-  // ✅ [수정] onclick 이벤트 제거 (이름 헤더 클릭 시 저장 X)
+  // [수정] 헤더 내용 div 인라인 스타일 -> 클래스
   htmlParts.push(`
     <tr>
       <th rowspan="2" class="col-no">번호</th>
       <th rowspan="2" class="col-name">이름</th>
       <th colspan="${MAX_PERIODS}" class="header-day ${headerClass}">
-        <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+        <div class="header-day-content">
           <span>${dateLabel}</span>
-          <label style="font-size:12px; display:flex; align-items:center; cursor:pointer; background:rgba(255,255,255,0.5); padding:2px 6px; border-radius:4px;">
+          <label class="header-checkbox-label">
             <input type="checkbox" id="chkConfirmDay" ${checkedAttr} onchange="toggleDateConfirmation('${targetDayStr}')">
-            <span style="margin-left:4px;">${statusText}</span>
+            <span class="header-checkbox-span">${statusText}</span>
           </label>
         </div>
       </th>
@@ -650,24 +668,24 @@ function renderTable(data) {
 }
 
 async function toggleDateConfirmation(dayStr) {
-  if (Object.keys(pendingChanges).length > 0) {
+  if (Object.keys(state.pendingChanges).length > 0) {
       showMessageModal("미저장 자료가 있습니다.\n먼저 저장하세요.");
       const checkbox = document.getElementById('chkConfirmDay');
       checkbox.checked = !checkbox.checked;
       return;
   }
 
-  if (!currentRenderedData) return;
+  if (!state.currentRenderedData) return;
 
   const checkbox = document.getElementById('chkConfirmDay');
   const newStatus = checkbox.checked;
 
-  if (!currentRenderedData.confirmations) currentRenderedData.confirmations = {};
-  currentRenderedData.confirmations[dayStr] = newStatus;
+  if (!state.currentRenderedData.confirmations) state.currentRenderedData.confirmations = {};
+  state.currentRenderedData.confirmations[dayStr] = newStatus;
 
   const year = CURRENT_YEAR;
-  const month = (activeDate.getMonth() + 1).toString();
-  const [grade, cls] = currentSelectedClass.split('-');
+  const month = (state.activeDate.getMonth() + 1).toString();
+  const [grade, cls] = state.currentSelectedClass.split('-');
   const path = `attendance/${year}/${month}/${grade}-${cls}/confirmations`;
   
   try {
@@ -696,13 +714,13 @@ async function toggleDateConfirmation(dayStr) {
 }
 
 function syncColorToGoogleSheet(isConfirmed) {
-  if (!currentRenderedData || !currentRenderedData.students) return;
+  if (!state.currentRenderedData || !state.currentRenderedData.students) return;
 
   const year = CURRENT_YEAR;
-  const day = activeDate.getDate();
+  const day = state.activeDate.getDate();
   const batchData = [];
   
-  currentRenderedData.students.forEach(std => {
+  state.currentRenderedData.students.forEach(std => {
     const dayAtts = std.attendance.filter(a => a.day == day);
     dayAtts.forEach(att => {
       batchData.push({
@@ -728,20 +746,20 @@ function syncColorToGoogleSheet(isConfirmed) {
 
 async function executeSave() {
   document.getElementById('confirmModal').classList.remove('show');
-  const keys = Object.keys(pendingChanges);
-  if (keys.length === 0 && !pendingNavigation) return;
+  const keys = Object.keys(state.pendingChanges);
+  if (keys.length === 0 && !state.pendingNavigation) return;
 
   const year = CURRENT_YEAR;
-  const month = (activeDate.getMonth() + 1).toString();
-  const [grade, cls] = currentSelectedClass.split('-');
+  const month = (state.activeDate.getMonth() + 1).toString();
+  const [grade, cls] = state.currentSelectedClass.split('-');
   
-  const dayStr = activeDate.getDate().toString();
-  const isConfirmed = currentRenderedData.confirmations ? currentRenderedData.confirmations[dayStr] : false;
+  const dayStr = state.activeDate.getDate().toString();
+  const isConfirmed = state.currentRenderedData.confirmations ? state.currentRenderedData.confirmations[dayStr] : false;
 
   keys.forEach(key => {
     const [r, c] = key.split('-');
-    const val = pendingChanges[key];
-    const student = currentRenderedData.students.find(s => s.rowNumber == r);
+    const val = state.pendingChanges[key];
+    const student = state.currentRenderedData.students.find(s => s.rowNumber == r);
     if (student) {
       const att = student.attendance.find(a => a.colIndex == c);
       if (att) att.value = val;
@@ -750,7 +768,7 @@ async function executeSave() {
 
   const path = `attendance/${year}/${month}/${grade}-${cls}`;
   try {
-    await update(ref(db, path), currentRenderedData);
+    await update(ref(db, path), state.currentRenderedData);
     
     keys.forEach(key => {
       const [r, c] = key.split('-');
@@ -762,7 +780,7 @@ async function executeSave() {
     
     const backupPayload = keys.map(key => {
         const [r, c] = key.split('-');
-        const val = pendingChanges[key];
+        const val = state.pendingChanges[key];
         return { 
           year: year, 
           row: r, 
@@ -777,12 +795,12 @@ async function executeSave() {
         fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
     }
 
-    pendingChanges = {};
+    state.pendingChanges = {};
     updateSaveButtonUI();
 
-    if (pendingNavigation) {
-        pendingNavigation(); 
-        pendingNavigation = null;
+    if (state.pendingNavigation) {
+        state.pendingNavigation(); 
+        state.pendingNavigation = null;
     }
   } catch (error) {
     alert("저장 실패: " + error.message);
@@ -829,7 +847,7 @@ function showConfirmModal() { document.getElementById('confirmModal').classList.
 
 function hideConfirmModal() { 
   document.getElementById('confirmModal').classList.remove('show'); 
-  pendingNavigation = null;
+  state.pendingNavigation = null;
 }
 
 function queueUpdate(cell, newValue) {
@@ -844,8 +862,8 @@ function queueUpdate(cell, newValue) {
   const key = `${r}-${c}`;
 
   let originalValue = "";
-  if (currentRenderedData) {
-    const student = currentRenderedData.students.find(s => s.rowNumber == r);
+  if (state.currentRenderedData) {
+    const student = state.currentRenderedData.students.find(s => s.rowNumber == r);
     if (student) {
       const att = student.attendance.find(a => a.colIndex == c);
       if (att) originalValue = att.value;
@@ -853,37 +871,33 @@ function queueUpdate(cell, newValue) {
   }
 
   if (newValue === originalValue) {
-    delete pendingChanges[key];
+    delete state.pendingChanges[key];
     cell.classList.remove('unsaved-cell');
   } else {
-    pendingChanges[key] = newValue;
+    state.pendingChanges[key] = newValue;
     cell.classList.add('unsaved-cell');
   }
 
   updateSaveButtonUI();
 }
 
-// ✅ [수정] 이름 헤더 로직 제거하고 플로팅 버튼만 제어
 function updateSaveButtonUI() {
-  const count = Object.keys(pendingChanges).length;
-  // const nameHeader = document.querySelector('thead th.col-name'); <- 제거됨
+  const count = Object.keys(state.pendingChanges).length;
   const fab = document.getElementById('floatingSaveBtn');
   
   if (count > 0) { 
-      // 이름 헤더 변경 로직 제거됨
       if(fab) {
           fab.classList.add('show');
           fab.innerHTML = `저장<br>(${count})`;
       }
   } else { 
-      // 이름 헤더 변경 로직 제거됨
       if(fab) {
           fab.classList.remove('show');
       }
   }
 }
 
-function onSaveBtnClick() { if (Object.keys(pendingChanges).length === 0) return; showConfirmModal(); }
+function onSaveBtnClick() { if (Object.keys(state.pendingChanges).length === 0) return; showConfirmModal(); }
 
 // 드래그 및 터치
 function addDragListeners() { 
@@ -901,8 +915,8 @@ function addDragListeners() {
 function addFocusListeners() { 
   const cells = document.querySelectorAll('.check-cell'); 
   cells.forEach(c => { 
-    c.addEventListener('mouseenter', (e) => { if(!isMultiMode) highlightHeaders(e.currentTarget); }); 
-    c.addEventListener('mouseleave', () => { if(!isMultiMode) clearHeaderHighlights(); }); 
+    c.addEventListener('mouseenter', (e) => { if(!state.isMultiMode) highlightHeaders(e.currentTarget); }); 
+    c.addEventListener('mouseleave', () => { if(!state.isMultiMode) clearHeaderHighlights(); }); 
   }); 
 }
 
@@ -910,7 +924,7 @@ function highlightHeaders(cell) {}
 function clearHeaderHighlights() {}
 
 function onMouseDown(e) { 
-  if (Date.now() - lastTouchTime < 1000) return; 
+  if (Date.now() - state.lastTouchTime < 1000) return; 
   const cell = e.currentTarget;
   if (e.button === 0) {
     processSingleCell(cell);
@@ -921,23 +935,23 @@ function onMouseDown(e) {
   }
 }
 
-function onMouseEnter(e) { if(isMultiMode) addToSelection(e.currentTarget); }
-function onMouseUp() { if(isMultiMode) finishMultiSelect(); }
+function onMouseEnter(e) { if(state.isMultiMode) addToSelection(e.currentTarget); }
+function onMouseUp() { if(state.isMultiMode) finishMultiSelect(); }
 
 function onTouchStart(e) { 
   if(navigator.vibrate) navigator.vibrate(1);
-  lastTouchTime = Date.now(); 
+  state.lastTouchTime = Date.now(); 
   const cell = e.currentTarget;
-  dragStartCell = cell; 
-  longPressTimer = setTimeout(() => { 
+  state.dragStartCell = cell; 
+  state.longPressTimer = setTimeout(() => { 
     if(navigator.vibrate) navigator.vibrate(50); 
     startMultiSelect(cell); 
   }, 300); 
 }
 
 function onTouchMove(e) { 
-  if(longPressTimer && !isMultiMode){clearTimeout(longPressTimer);longPressTimer=null;} 
-  if(isMultiMode){
+  if(state.longPressTimer && !state.isMultiMode){clearTimeout(state.longPressTimer);state.longPressTimer=null;} 
+  if(state.isMultiMode){
     e.preventDefault(); 
     const t=e.touches[0]; 
     const target=document.elementFromPoint(t.clientX, t.clientY); 
@@ -946,29 +960,29 @@ function onTouchMove(e) {
 }
 
 function onTouchEnd(e) { 
-  lastTouchTime = Date.now(); 
-  if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;} 
-  if(isMultiMode) finishMultiSelect(); 
+  state.lastTouchTime = Date.now(); 
+  if(state.longPressTimer){clearTimeout(state.longPressTimer);state.longPressTimer=null;} 
+  if(state.isMultiMode) finishMultiSelect(); 
 }
 
 function startMultiSelect(cell) { 
   if (cell.classList.contains('confirmed-col')) return; 
-  isMultiMode=true; 
-  selectedCells.clear(); 
+  state.isMultiMode=true; 
+  state.selectedCells.clear(); 
   const hasData = cell.querySelector('.mark-symbol') !== null;
-  dragStartAction = hasData ? 'clear' : 'fill'; 
+  state.dragStartAction = hasData ? 'clear' : 'fill'; 
   addToSelection(cell); 
 }
 
 function addToSelection(cell) { 
   if (cell.classList.contains('confirmed-col')) return;
-  if(!selectedCells.has(cell)){selectedCells.add(cell); cell.classList.add('multi-selecting');} 
+  if(!state.selectedCells.has(cell)){state.selectedCells.add(cell); cell.classList.add('multi-selecting');} 
 }
 
 function finishMultiSelect() { 
-  isMultiMode=false; 
+  state.isMultiMode=false; 
   let val=""; 
-  if(dragStartAction==='fill'){
+  if(state.dragStartAction==='fill'){
     const s = document.querySelector('input[name="attType"]:checked').value; 
     const r = document.getElementById('reasonInput').value.trim(); 
     if(s!==""){
@@ -976,12 +990,12 @@ function finishMultiSelect() {
       if((s==="△"||s==="○")&&r!=="") val=`${s}(${r})`;
     }
   } 
-  selectedCells.forEach(c=>{c.classList.remove('multi-selecting'); queueUpdate(c, val);}); 
-  selectedCells.clear(); 
+  state.selectedCells.forEach(c=>{c.classList.remove('multi-selecting'); queueUpdate(c, val);}); 
+  state.selectedCells.clear(); 
 }
 
 function processSingleCell(cell) { 
-  if(isMultiMode) return; 
+  if(state.isMultiMode) return; 
   if (cell.classList.contains('confirmed-col')) {
       showToast("마감된 날짜입니다.");
       return;
@@ -1006,21 +1020,22 @@ function closeStudentModal() {
 // [수정됨] 학생 상세 보기 팝업 함수
 // =======================================================
 function showStudentSummary(studentNo, studentName) {
-  if (!currentRenderedData || !currentRenderedData.students) {
+  if (!state.currentRenderedData || !state.currentRenderedData.students) {
      alert("데이터가 로드되지 않았습니다.");
      return;
   }
   
-  const student = currentRenderedData.students.find(s => s.no == studentNo);
+  const student = state.currentRenderedData.students.find(s => s.no == studentNo);
   if (!student) {
      alert("학생 정보를 찾을 수 없습니다.");
      return;
   }
 
-  const month = (activeDate.getMonth() + 1).toString();
+  const month = (state.activeDate.getMonth() + 1).toString();
   
   const titleEl = document.getElementById('studentModalTitle');
-  titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span> <span style="color:var(--primary-color)">${month}</span>월 출결사항`;
+  // [수정] 인라인 스타일 -> CSS 클래스
+  titleEl.innerHTML = `${studentName} <span class="student-modal-subtitle">(${studentNo}번)</span> <span class="student-modal-month">${month}</span>월 출결사항`;
   
   // 연락처 및 3단 버튼 생성
   let contactHtml = "";
@@ -1072,7 +1087,8 @@ function generateSummaryHtml(attendanceList) {
     dayGroups[att.day].push(att);
   });
   
-  let html = "<div style='text-align:left;'>";
+  // [수정] 인라인 스타일 -> CSS 클래스
+  let html = "<div class='summary-list-container'>";
   const days = Object.keys(dayGroups).sort((a, b) => Number(a) - Number(b));
   let hasData = false;
   
@@ -1086,11 +1102,11 @@ function generateSummaryHtml(attendanceList) {
     const firstVal = absents[0].value;
     const isAllSame = absents.every(r => r.value === firstVal);
     
-    html += `<div style="margin-bottom: 8px; font-size:15px; padding-bottom:5px; border-bottom:1px dashed #eee;">• <b>${day}일</b> : `;
+    html += `<div class="summary-item">• <b>${day}일</b> : `;
     
     if (isFullDay && isAllSame) {
       const { typeText, reason } = parseValueWithText(firstVal);
-      html += `<span style="font-weight:bold; color:#d63384;">${typeText}결석</span>`;
+      html += `<span class="summary-absent-type">${typeText}결석</span>`;
       if (reason) html += `, ${reason}`;
     } else {
       const reasonGroups = {}; 
@@ -1102,7 +1118,7 @@ function generateSummaryHtml(attendanceList) {
       for (const [val, periods] of Object.entries(reasonGroups)) {
         const { typeText, reason } = parseValueWithText(val);
         const periodStr = periods.join('/');
-        let text = `${periodStr}교시 (<span style="font-weight:bold;">${typeText}</span>`;
+        let text = `${periodStr}교시 (<span class="summary-detail-text">${typeText}</span>`;
         if (reason) text += `, ${reason}`;
         text += `)`;
         parts.push(text);
@@ -1112,7 +1128,7 @@ function generateSummaryHtml(attendanceList) {
     html += `</div>`;
   });
   
-  if (!hasData) html += "<div style='text-align:center; color:#999; padding:20px;'>이번 달 특이사항 없음</div>";
+  if (!hasData) html += "<div class='message-box text-gray'>이번 달 특이사항 없음</div>";
   html += "</div>";
   return html;
 }
@@ -1171,7 +1187,7 @@ async function enterStatsMode() {
   // 1. 일별 통계
   txtDate.innerText = recentDayStr;
   
-  statsDateFlatpickr = flatpickr("#statsDateInput", {
+  state.pickers.statsDate = flatpickr("#statsDateInput", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
       defaultDate: recentDayStr, 
       enable: getEnableDates(),
@@ -1180,13 +1196,13 @@ async function enterStatsMode() {
           txtDate.innerText = dateStr;
       }
   });
-  document.getElementById('btnStatsDateTrigger').onclick = () => statsDateFlatpickr.open();
+  document.getElementById('btnStatsDateTrigger').onclick = () => state.pickers.statsDate.open();
 
   
   // 2. 월별 통계
   txtMonth.innerText = recentMonthStr;
 
-  statsMonthFlatpickr = flatpickr("#statsMonthInput", {
+  state.pickers.statsMonth = flatpickr("#statsMonthInput", {
       locale: "ko", 
       disableMobile: true,
       plugins: [
@@ -1204,13 +1220,13 @@ async function enterStatsMode() {
           txtMonth.innerText = dateStr;
       }
   });
-  document.getElementById('btnStatsMonthTrigger').onclick = () => statsMonthFlatpickr.open();
+  document.getElementById('btnStatsMonthTrigger').onclick = () => state.pickers.statsMonth.open();
 
 
   // 3. 기간 통계 (시작)
   txtStart.innerText = firstDayStr;
 
-  statsStartFlatpickr = flatpickr("#statsStartDate", {
+  state.pickers.statsStart = flatpickr("#statsStartDate", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
       defaultDate: firstDayStr,
       enable: getEnableDates(),
@@ -1219,12 +1235,12 @@ async function enterStatsMode() {
           txtStart.innerText = dateStr;
       }
   });
-  document.getElementById('btnStatsStartTrigger').onclick = () => statsStartFlatpickr.open();
+  document.getElementById('btnStatsStartTrigger').onclick = () => state.pickers.statsStart.open();
 
   // 4. 기간 통계 (종료)
   txtEnd.innerText = recentDayStr;
 
-  statsEndFlatpickr = flatpickr("#statsEndDate", {
+  state.pickers.statsEnd = flatpickr("#statsEndDate", {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
       defaultDate: recentDayStr,
       enable: getEnableDates(),
@@ -1233,7 +1249,7 @@ async function enterStatsMode() {
           txtEnd.innerText = dateStr;
       }
   });
-  document.getElementById('btnStatsEndTrigger').onclick = () => statsEndFlatpickr.open();
+  document.getElementById('btnStatsEndTrigger').onclick = () => state.pickers.statsEnd.open();
   
   updateFlatpickrAllowedDates();
 
@@ -1287,11 +1303,12 @@ function renderStatsFilters() {
 
 async function runStatsSearch() {
   const container = document.getElementById('statsContainer');
-  container.innerHTML = '<div style="padding:40px; text-align:center; color:#888;">데이터 분석 중...</div>';
+  // [수정] 인라인 스타일 -> CSS 클래스
+  container.innerHTML = '<div class="message-box-lg text-gray">데이터 분석 중...</div>';
 
   const selectedCheckboxes = document.querySelectorAll('input[name="classFilter"]:checked');
   if (selectedCheckboxes.length === 0) {
-    container.innerHTML = '<div style="padding:40px; text-align:center; color:red;">선택된 반이 없습니다.</div>';
+    container.innerHTML = '<div class="message-box-lg text-red">선택된 반이 없습니다.</div>';
     return;
   }
   const targetClassKeys = Array.from(selectedCheckboxes).map(cb => cb.value);
@@ -1313,9 +1330,9 @@ async function runStatsSearch() {
     filterStartDate = d;
     filterEndDate = d;
     
-    let qMonth = d.getMonth() + 1;
-    let qYear = d.getFullYear();
-    if (qMonth <= 2) qYear -= 1; 
+    // [수정] getSchoolYear 로직 통합
+    const qYear = parseInt(getSchoolYear(d));
+    const qMonth = d.getMonth() + 1;
 
     targetMonthsToFetch.push({ year: qYear.toString(), month: qMonth.toString() });
     
@@ -1330,7 +1347,11 @@ async function runStatsSearch() {
     let mYear = parseInt(parts[0]);
     let mMonth = parseInt(parts[1]);
     
-    if (mMonth <= 2) mYear -= 1;
+    // [수정] getSchoolYear 로직 통합 (임시 날짜 생성하여 계산)
+    const tempDate = new Date(mYear, mMonth - 1, 1);
+    const sYear = getSchoolYear(tempDate);
+    // getSchoolYear는 1,2월일 때 작년으로 반환하므로, API 호출용 mYear는 sYear 사용
+    mYear = parseInt(sYear);
 
     filterStartDate = new Date(parts[0], mMonth - 1, 1);
     filterEndDate = new Date(parts[0], mMonth, 0);
@@ -1354,16 +1375,16 @@ async function runStatsSearch() {
     const endLimit = new Date(filterEndDate.getFullYear(), filterEndDate.getMonth(), 1);
     
     while(curr <= endLimit) {
-        let qMonth = curr.getMonth() + 1;
-        let qYear = curr.getFullYear();
-        if (qMonth <= 2) qYear -= 1;
+        // [수정] getSchoolYear 로직 통합
+        const qYear = parseInt(getSchoolYear(curr));
+        const qMonth = curr.getMonth() + 1;
 
         targetMonthsToFetch.push({ year: qYear.toString(), month: qMonth.toString() });
         curr.setMonth(curr.getMonth() + 1);
     }
   }
   
-  window.currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
+  state.currentStatsTotalCounts = { '1': 0, '2': 0, '3': 0 };
   let fullDayAbsentCounts = { '1': 0, '2': 0, '3': 0 }; 
   
   let hasRangeData = false;
@@ -1457,7 +1478,7 @@ async function runStatsSearch() {
 
          if (!finalClassSet.has(res.classKey) && res.val.students) {
             const grade = res.classKey.split('-')[0];
-            window.currentStatsTotalCounts[grade] += res.val.students.length;
+            state.currentStatsTotalCounts[grade] += res.val.students.length;
             finalClassSet.add(res.classKey);
          }
     });
@@ -1474,6 +1495,7 @@ async function runStatsSearch() {
       students.forEach(s => {
         if (!s.attendance) return;
 
+        // [수정] getRealYear 사용
         const rYear = getRealYear(res.year, res.month);
         const rMonth = parseInt(res.month);
 
@@ -1531,7 +1553,8 @@ async function runStatsSearch() {
 
   } catch (e) {
     console.error(e);
-    container.innerHTML = `<div style="text-align:center; color:red;">오류: ${e.message}</div>`;
+    // [수정] 인라인 스타일 -> CSS 클래스
+    container.innerHTML = `<div class="message-center text-red">오류: ${e.message}</div>`;
   }
 }
 
@@ -1539,7 +1562,8 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
   const container = document.getElementById('statsContainer');
   let html = "";
   
-  html += `<div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#555;">[ ${displayTitle} ]</div>`;
+  // [수정] 인라인 스타일 -> CSS 클래스
+  html += `<div class="stats-title">[ ${displayTitle} ]</div>`;
 
   if (mode === 'daily') {
       let isAllConfirmedForSummary = true;
@@ -1569,7 +1593,8 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
   }
 
   if (hasRangeData && isAllClean) {
-      html += `<div style="padding:40px; text-align:center; color:#888;">특이사항(결석 등)이 없습니다.</div>`;
+      // [수정] 인라인 스타일 -> CSS 클래스
+      html += `<div class="message-box-lg text-gray">특이사항(결석 등)이 없습니다.</div>`;
       container.innerHTML = html;
       return;
   }
@@ -1580,9 +1605,10 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
     let unconfirmedText = "";
 
     if (notConfirmedList.length === 0) {
-        badgeHtml = `<span style="font-size:12px; color:green; margin-left:8px;">[마감 완료]</span>`;
+        // [수정] 인라인 스타일 -> CSS 클래스
+        badgeHtml = `<span class="badge-confirmed">[마감 완료]</span>`;
     } else {
-        badgeHtml = `<span style="font-size:12px; color:red; margin-left:8px;">[마감 전]</span>`;
+        badgeHtml = `<span class="badge-unconfirmed">[마감 전]</span>`;
 
         if (mode !== 'daily') {
             const groupByMonth = {};
@@ -1624,7 +1650,8 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
                 parts.push(`${m}월 ${ranges.join(', ')}일`);
             });
             
-            unconfirmedText = `<span style="font-size:12px; color:red; margin-left:5px;">${parts.join(', ')}</span>`;
+            // [수정] 인라인 스타일 -> CSS 클래스
+            unconfirmedText = `<span class="text-red-small">${parts.join(', ')}</span>`;
         }
     }
 
@@ -1655,15 +1682,15 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
   });
 
   if (!hasRangeData) {
-    html += `<div style="padding:20px; text-align:center; color:#888;">해당 기간의 수업 자료가 없습니다.</div>`;
+    html += `<div class="message-box text-gray">해당 기간의 수업 자료가 없습니다.</div>`;
   } 
   
   container.innerHTML = html;
 }
 
 function calculateDailySummary(fullDayAbsentCounts) {
-  if (!window.currentStatsTotalCounts) return "";
-  const totals = window.currentStatsTotalCounts;
+  if (!state.currentStatsTotalCounts) return "";
+  const totals = state.currentStatsTotalCounts;
   
   const present1 = (totals['1'] || 0) - (fullDayAbsentCounts['1'] || 0);
   const present2 = (totals['2'] || 0) - (fullDayAbsentCounts['2'] || 0);
@@ -1708,7 +1735,8 @@ function getStudentSummaryText(records) {
     
     if (isFullDay && isAllSame) {
        const { typeText, reason } = parseValueWithText(firstVal);
-       text += `<span style="color:#d63384; font-weight:bold;">${typeText}결석</span>`;
+       // [수정] 인라인 스타일 -> CSS 클래스
+       text += `<span class="summary-absent-type">${typeText}결석</span>`;
        if (reason) text += ` (${reason})`;
     } else {
        const reasonGroups = {};
@@ -1751,13 +1779,4 @@ function convertSymbolToText(symbol) {
   if (symbol === '○') return '병';
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
-}
-
-function getRealYear(schoolYear, month) {
-  const m = parseInt(month);
-  const y = parseInt(schoolYear);
-  if (m === 1 || m === 2) {
-    return y + 1;
-  }
-  return y;
 }
