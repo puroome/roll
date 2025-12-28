@@ -1089,7 +1089,7 @@ function showStudentSummary(studentNo, studentName) {
                   <div class="contact-btn btn-pastel-blue" onclick="execLocationCheck()">❗ 확인</div>
               </div>
           </div>
-          <div class="btn-location-toggle btn-pastel-red" onclick="toggleLocationMode()">
+          <div class="contact-btn btn-location-toggle btn-pastel-red" onclick="toggleLocationMode()">
               📍 위치
           </div>
       </div>
@@ -1809,3 +1809,4 @@ function convertSymbolToText(symbol) {
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
 }
+
