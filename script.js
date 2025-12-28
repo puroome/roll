@@ -1052,6 +1052,7 @@ function showStudentSummary(studentNo, studentName) {
     const smsBody = `${shortName}${suffix}, 선생님이야. 아래 주소에 들어가서 이름적고, 출석하기 버튼 누르면 돼.\n${locationUrl}`;
     const encodedBody = encodeURIComponent(smsBody);
 
+    // [수정] 위치 버튼 클릭 시 옵션 확장
     contactHtml = `
       <div class="contact-btn-group">
           <a href="tel:${phone}" class="contact-btn btn-pastel-blue">
@@ -1060,9 +1061,19 @@ function showStudentSummary(studentNo, studentName) {
           <a href="sms:${phone}" class="contact-btn btn-pastel-green">
              📩 문자
           </a>
-          <a href="sms:${phone}?body=${encodedBody}" class="contact-btn btn-pastel-red">
+          
+          <button id="btnLocToggle" class="contact-btn btn-pastel-red" onclick="document.getElementById('btnLocToggle').style.display='none'; document.getElementById('cntLocExpand').style.display='flex';">
              📍 위치
-          </a>
+          </button>
+          
+          <div id="cntLocExpand" style="display:none; flex: 2; gap: 6px;">
+             <a href="sms:${phone}?body=${encodedBody}" class="contact-btn btn-pastel-red" style="font-size:12px; padding:0;">
+                📩요청
+             </a>
+             <a href="https://puroome.github.io/pin/admin/" target="_blank" class="contact-btn btn-pastel-red" style="font-size:12px; padding:0; background-color:#fff8e1; color:#ff6f00;">
+                👀확인
+             </a>
+          </div>
       </div>
     `;
   } else {
