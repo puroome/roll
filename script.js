@@ -16,6 +16,7 @@ const db = getDatabase(app);
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGOrVUl3r1fRjDrPXnG7uycNL0547aOrSdTiXLbG2ggooANum2hX4NFFg/exec";
 
 let globalData = {}; 
+let pendingSmsUri = ""; // [수정됨] 위치 모달에서 사용할 URI 저장 변수
 
 // [유틸리티: 학년도 계산 통합]
 function getSchoolYear(dateObj) {
@@ -68,6 +69,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.toggleDateConfirmation = toggleDateConfirmation;
   window.showStudentSummary = showStudentSummary;
   window.showMessageModal = showMessageModal;
+  window.openLocationModal = openLocationModal; // [수정됨]
+  window.closeLocationModal = closeLocationModal; // [수정됨]
   
   // ✅ Flatpickr 초기화
   setupDatePicker();
@@ -98,6 +101,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnBackToHome').addEventListener('click', () => goHome(false));
   document.getElementById('btnBackToHomeStats').addEventListener('click', () => history.back());
 
+  // [수정됨] 위치 모달 버튼 리스너
+  document.getElementById('btnLocRequest').addEventListener('click', () => {
+    if(pendingSmsUri) window.location.href = pendingSmsUri;
+    closeLocationModal();
+  });
+  
+  document.getElementById('btnLocCheck').addEventListener('click', () => {
+    window.open("https://puroome.github.io/pin/admin/", "_blank");
+    closeLocationModal();
+  });
+
   window.onclick = function(event) {
     const studentModal = document.getElementById('studentModal');
     if (event.target == studentModal) {
@@ -110,6 +124,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageModal = document.getElementById('messageModal');
     if (event.target == messageModal) {
       messageModal.classList.remove('show');
+    }
+    // [수정됨] 위치 모달 닫기 처리
+    const locationModal = document.getElementById('locationModal');
+    if (event.target == locationModal) {
+      closeLocationModal();
     }
   }
 
@@ -850,6 +869,18 @@ function hideConfirmModal() {
   state.pendingNavigation = null;
 }
 
+// [수정됨] 위치 모달 열기
+function openLocationModal(smsUri) {
+  pendingSmsUri = smsUri;
+  document.getElementById('locationModal').classList.add('show');
+}
+
+// [수정됨] 위치 모달 닫기
+function closeLocationModal() {
+  document.getElementById('locationModal').classList.remove('show');
+  pendingSmsUri = "";
+}
+
 function queueUpdate(cell, newValue) {
   cell.innerHTML = formatValueToHtml(newValue);
   cell.classList.remove('flash-success'); 
@@ -1051,8 +1082,10 @@ function showStudentSummary(studentNo, studentName) {
     const locationUrl = "https://puroome.github.io/pin/";
     const smsBody = `${shortName}${suffix}, 선생님이야. 아래 주소에 들어가서 이름적고, 출석하기 버튼 누르면 돼.\n${locationUrl}`;
     const encodedBody = encodeURIComponent(smsBody);
+    
+    // [수정됨] smsUri를 생성하여 모달 호출에 사용
+    const smsUri = `sms:${phone}?body=${encodedBody}`;
 
-    // [수정] 위치 버튼 클릭 시 옵션 확장
     contactHtml = `
       <div class="contact-btn-group">
           <a href="tel:${phone}" class="contact-btn btn-pastel-blue">
@@ -1061,18 +1094,8 @@ function showStudentSummary(studentNo, studentName) {
           <a href="sms:${phone}" class="contact-btn btn-pastel-green">
              📩 문자
           </a>
-          
-          <button id="btnLocToggle" class="contact-btn btn-pastel-red" onclick="document.getElementById('btnLocToggle').style.display='none'; document.getElementById('cntLocExpand').style.display='flex';">
+          <div class="contact-btn btn-pastel-red" onclick="openLocationModal('${smsUri}')" style="cursor:pointer;">
              📍 위치
-          </button>
-          
-          <div id="cntLocExpand" style="display:none; flex: 2; gap: 6px;">
-             <a href="sms:${phone}?body=${encodedBody}" class="contact-btn btn-pastel-red" style="font-size:12px; padding:0;">
-                📩요청
-             </a>
-             <a href="https://puroome.github.io/pin/admin/" target="_blank" class="contact-btn btn-pastel-red" style="font-size:12px; padding:0; background-color:#fff8e1; color:#ff6f00;">
-                👀확인
-             </a>
           </div>
       </div>
     `;
