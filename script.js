@@ -17,10 +17,15 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyrfBR0zPaaTrGO
 
 let globalData = {}; 
 
-const nowForYear = new Date();
-const CURRENT_YEAR = (nowForYear.getMonth() + 1 <= 2) 
-    ? (nowForYear.getFullYear() - 1).toString() 
-    : nowForYear.getFullYear().toString();
+// [최적화] 학년도 계산 함수 통합
+function getSchoolYear(dateObj) {
+    const m = dateObj.getMonth() + 1;
+    const y = dateObj.getFullYear();
+    // 1월, 2월은 작년 학년도로 취급
+    return (m <= 2) ? (y - 1).toString() : y.toString();
+}
+
+const CURRENT_YEAR = getSchoolYear(new Date());
 
 // [상태 변수]
 let activeDate = new Date(); 
@@ -57,6 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // ✅ Flatpickr 초기화
   setupDatePicker();
+  
+  // ✅ 플로팅 저장 버튼 생성
+  createFloatingSaveButton();
 
   document.getElementById('modalCancelBtn').addEventListener('click', hideConfirmModal);
   document.getElementById('modalConfirmBtn').addEventListener('click', executeSave);
@@ -104,6 +112,16 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchInitDataFromFirebase();
 });
 
+// ✅ 플로팅 저장 버튼 생성 함수
+function createFloatingSaveButton() {
+    const btn = document.createElement('div');
+    btn.id = 'floatingSaveBtn';
+    btn.className = 'floating-save-btn';
+    btn.innerHTML = '저장'; 
+    btn.onclick = onSaveBtnClick;
+    document.body.appendChild(btn);
+}
+
 function showMessageModal(msg) {
   const modal = document.getElementById('messageModal');
   const body = document.getElementById('messageModalBody');
@@ -123,7 +141,6 @@ function setupDatePicker() {
       dateFormat: "Y-m-d",
       disableMobile: true,
       maxDate: "today",
-      // ✅ [수정] 달력 위치 기준을 '버튼'으로 설정 (버튼 가림 방지)
       positionElement: document.getElementById('btnDateTrigger'),
       
       onChange: function(selectedDates, dateStr, instance) {
@@ -400,6 +417,20 @@ async function loadStudents() {
   const grade = parts[0];
   const cls = parts[1];
 
+  // ✅ [최적화] 스켈레톤 로딩 표시
+  const tableContainer = document.getElementById('tableContainer');
+  tableContainer.innerHTML = ''; // 초기화
+  
+  // 10개의 스켈레톤 행 생성
+  const skeletonHTML = Array(10).fill(0).map(() => `
+    <div class="skeleton-row">
+      <div class="skeleton-box" style="width: 30px;"></div>
+      <div class="skeleton-box" style="width: 60px;"></div>
+      <div class="skeleton-box" style="flex:1;"></div>
+    </div>
+  `).join('');
+  
+  tableContainer.innerHTML = `<div style="padding:10px;">${skeletonHTML}</div>`;
   document.getElementById('loading').style.display = 'inline';
   
   const path = `attendance/${year}/${month}/${grade}-${cls}`;
@@ -422,9 +453,7 @@ async function loadStudents() {
   }
 }
 
-// ✅ [수정] renderTable 함수 전면 수정
-// 1. 항상 7교시를 기준으로 레이아웃 생성
-// 2. 데이터가 없는 나머지 교시는 하나의 회색 블록(colspan)으로 통합
+// ✅ [최적화] renderTable: 배열 push 후 join 사용
 function renderTable(data) {
   if (!data.confirmations) data.confirmations = {};
   
@@ -458,27 +487,26 @@ function renderTable(data) {
   const FIXED_WIDTH_NAME = 55; 
   const MIN_CELL_WIDTH = 35;   
 
-  // ✅ [수정] 항상 7교시 기준
   const MAX_PERIODS = 7;
   const dataCount = dayRecords.length;
   const remainingCount = Math.max(0, MAX_PERIODS - dataCount);
 
-  // ✅ [수정] 전체 너비를 7칸 기준으로 계산
   const minTableWidth = FIXED_WIDTH_NO + FIXED_WIDTH_NAME + (MAX_PERIODS * MIN_CELL_WIDTH);
 
-  let html = `<table style="min-width: ${minTableWidth}px;">`;
-
-  html += '<colgroup>';
-  html += `<col style="width: ${FIXED_WIDTH_NO}px;">`;
-  html += `<col style="width: ${FIXED_WIDTH_NAME}px;">`;
+  // ✅ 배열을 사용해 렌더링 속도 향상
+  const htmlParts = [];
   
-  // ✅ [수정] 7개의 열을 모두 생성하여 레이아웃 고정
+  htmlParts.push(`<table style="min-width: ${minTableWidth}px;">`);
+  htmlParts.push('<colgroup>');
+  htmlParts.push(`<col style="width: ${FIXED_WIDTH_NO}px;">`);
+  htmlParts.push(`<col style="width: ${FIXED_WIDTH_NAME}px;">`);
+  
   for(let i = 0; i < MAX_PERIODS; i++) {
-      html += '<col>'; 
+      htmlParts.push('<col>'); 
   }
-  html += '</colgroup>';
+  htmlParts.push('</colgroup>');
 
-  html += '<thead>';
+  htmlParts.push('<thead>');
   
   const dayOfWeek = getDayOfWeek(activeDate);
   const dateLabel = `${activeDate.getMonth()+1}/${targetDay}(${dayOfWeek})`;
@@ -486,12 +514,8 @@ function renderTable(data) {
   const checkedAttr = isConfirmed ? 'checked' : '';
   const headerClass = isConfirmed ? 'confirmed-header' : '';
   const statusText = isConfirmed ? '마감됨' : '마감하기';
-
-  // ✅ [수정] 헤더 colspan도 7교시에 맞게 조정 (dataCount + remainingCount)
-  // 나머지 영역이 있다면 1칸으로 합쳐지므로, colspan은 dataCount + 1이 됨 (만약 remaining > 0일때)
-  // 하지만 상단 제목행은 전체를 덮어야 하므로 MAX_PERIODS 사용
   
-  html += `
+  htmlParts.push(`
     <tr>
       <th rowspan="2" class="col-no">번호</th>
       <th rowspan="2" class="col-name" onclick="onSaveBtnClick()">이름</th>
@@ -506,26 +530,23 @@ function renderTable(data) {
       </th>
     </tr>
     <tr>
-  `;
+  `);
   
-  // ✅ [수정] 교시 헤더 생성
   dayRecords.forEach(r => {
-    html += `<th>${r.period}</th>`;
+    htmlParts.push(`<th>${r.period}</th>`);
   });
   
-  // ✅ [수정] 남는 교시는 하나의 비활성 헤더로 통합
   if (remainingCount > 0) {
-      html += `<th colspan="${remainingCount}" class="inactive-header"></th>`;
+      htmlParts.push(`<th colspan="${remainingCount}" class="inactive-header"></th>`);
   }
   
-  html += '</tr></thead><tbody>';
+  htmlParts.push('</tr></thead><tbody>');
 
   data.students.forEach(std => {
-    html += '<tr>';
-    html += `<td>${std.no}</td>`;
-    html += `<td class="col-name" onclick="showStudentSummary('${std.no}', '${std.name}')">${std.name}</td>`;
+    htmlParts.push('<tr>');
+    htmlParts.push(`<td>${std.no}</td>`);
+    htmlParts.push(`<td class="col-name" onclick="showStudentSummary('${std.no}', '${std.name}')">${std.name}</td>`);
     
-    // ✅ [수정] 데이터가 있는 교시 렌더링
     dayRecords.forEach(headerRec => {
       const cellData = std.attendance.find(a => a.colIndex == headerRec.colIndex) || {};
       const val = cellData.value || "";
@@ -533,21 +554,22 @@ function renderTable(data) {
       
       const confirmedClass = isConfirmed ? "confirmed-col" : "";
 
-      html += `<td class="check-cell ${confirmedClass}" 
+      htmlParts.push(`<td class="check-cell ${confirmedClass}" 
                data-row="${std.rowNumber}" 
                data-col="${cellData.colIndex}" 
-               data-day="${targetDay}"> ${displayHtml} </td>`;
+               data-day="${targetDay}"> ${displayHtml} </td>`);
     });
 
-    // ✅ [수정] 남는 교시는 하나의 비활성 셀로 통합
     if (remainingCount > 0) {
-        html += `<td colspan="${remainingCount}" class="inactive-cell"></td>`;
+        htmlParts.push(`<td colspan="${remainingCount}" class="inactive-cell"></td>`);
     }
 
-    html += '</tr>';
+    htmlParts.push('</tr>');
   });
-  html += '</tbody></table>';
-  container.innerHTML = html;
+  htmlParts.push('</tbody></table>');
+  
+  // 한 번에 DOM 업데이트
+  container.innerHTML = htmlParts.join('');
 
   updateSaveButtonUI();
   addDragListeners(); 
@@ -768,17 +790,29 @@ function queueUpdate(cell, newValue) {
   updateSaveButtonUI();
 }
 
+// ✅ [최적화] 저장 버튼 UI 업데이트 (헤더 텍스트 + 플로팅 버튼)
 function updateSaveButtonUI() {
   const count = Object.keys(pendingChanges).length;
   const nameHeader = document.querySelector('thead th.col-name');
-  if (!nameHeader) return;
-
+  const fab = document.getElementById('floatingSaveBtn');
+  
   if (count > 0) { 
-      nameHeader.innerHTML = `저장<br>(${count})`; 
-      nameHeader.classList.add('save-active'); 
+      if(nameHeader) {
+          nameHeader.innerHTML = `저장<br>(${count})`; 
+          nameHeader.classList.add('save-active');
+      }
+      if(fab) {
+          fab.classList.add('show');
+          fab.innerHTML = `저장<br>(${count})`;
+      }
   } else { 
-      nameHeader.innerHTML = "이름"; 
-      nameHeader.classList.remove('save-active'); 
+      if(nameHeader) {
+          nameHeader.innerHTML = "이름"; 
+          nameHeader.classList.remove('save-active');
+      }
+      if(fab) {
+          fab.classList.remove('show');
+      }
   }
 }
 
@@ -919,7 +953,7 @@ function showStudentSummary(studentNo, studentName) {
   const month = (activeDate.getMonth() + 1).toString();
   
   const titleEl = document.getElementById('studentModalTitle');
-  titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span> <span style="color:#007bff">${month}</span>월 출결사항`;
+  titleEl.innerHTML = `${studentName} <span style="font-size:0.8em; color:#666;">(${studentNo}번)</span> <span style="color:var(--primary-color)">${month}</span>월 출결사항`;
   
   // 연락처 및 3단 버튼 생성
   let contactHtml = "";
@@ -1017,9 +1051,8 @@ function generateSummaryHtml(attendanceList) {
 }
 
 // =======================================================
-// [통계 기능] (✅ 수정됨: UI 버튼 연결 및 연도 표시)
+// [통계 기능]
 // =======================================================
-// [script.js] enterStatsMode 함수 전체 교체
 
 async function enterStatsMode() {
   history.pushState({ mode: 'stats' }, '', '');
@@ -1075,7 +1108,6 @@ async function enterStatsMode() {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
       defaultDate: recentDayStr, 
       enable: getEnableDates(),
-      // ✅ [수정] 달력 위치 기준을 버튼으로
       positionElement: document.getElementById('btnStatsDateTrigger'),
       onChange: (selectedDates, dateStr) => {
           txtDate.innerText = dateStr;
@@ -1100,7 +1132,6 @@ async function enterStatsMode() {
       maxDate: "today",
       defaultDate: recentMonthStr,
       disable: [],
-      // ✅ [수정] 달력 위치 기준을 버튼으로
       positionElement: document.getElementById('btnStatsMonthTrigger'),
       onChange: (selectedDates, dateStr) => {
           txtMonth.innerText = dateStr;
@@ -1116,7 +1147,6 @@ async function enterStatsMode() {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
       defaultDate: firstDayStr,
       enable: getEnableDates(),
-      // ✅ [수정] 달력 위치 기준을 버튼으로
       positionElement: document.getElementById('btnStatsStartTrigger'),
       onChange: (selectedDates, dateStr) => {
           txtStart.innerText = dateStr;
@@ -1131,7 +1161,6 @@ async function enterStatsMode() {
       locale: "ko", dateFormat: "Y-m-d", disableMobile: true, maxDate: "today",
       defaultDate: recentDayStr,
       enable: getEnableDates(),
-      // ✅ [수정] 달력 위치 기준을 버튼으로
       positionElement: document.getElementById('btnStatsEndTrigger'),
       onChange: (selectedDates, dateStr) => {
           txtEnd.innerText = dateStr;
@@ -1147,7 +1176,6 @@ async function enterStatsMode() {
 
 function updateStatsInputVisibility() {
   const mode = document.querySelector('input[name="statsType"]:checked').value;
-  // Wrapper ID로 접근 (CSS에서 display 제어)
   document.getElementById('dailyWrapper').style.display = (mode === 'daily') ? 'inline-block' : 'none';
   document.getElementById('monthlyWrapper').style.display = (mode === 'monthly') ? 'inline-block' : 'none';
   document.getElementById('statsPeriodInput').style.display = (mode === 'period') ? 'flex' : 'none';
@@ -1182,7 +1210,6 @@ function renderStatsFilters() {
         chkClasses.forEach(cb => cb.checked = e.target.checked); 
     });
 
-    // ✅ [수정] 개별 체크박스 상태가 변경되면 '전체' 체크박스도 동기화
     chkClasses.forEach(cb => {
         cb.addEventListener('change', () => {
             const allChecked = Array.from(chkClasses).every(c => c.checked);
@@ -1236,11 +1263,8 @@ async function runStatsSearch() {
     let mYear = parseInt(parts[0]);
     let mMonth = parseInt(parts[1]);
     
-    // ✅ [수정] 미래 월 경고 로직 삭제 (Flatpickr가 막아주므로)
-
     if (mMonth <= 2) mYear -= 1;
 
-    // 해당 월의 1일부터 말일까지 범위 설정
     filterStartDate = new Date(parts[0], mMonth - 1, 1);
     filterEndDate = new Date(parts[0], mMonth, 0);
 
@@ -1304,21 +1328,17 @@ async function runStatsSearch() {
     const nestedResults = await Promise.all(promises);
     nestedResults.forEach(arr => results.push(...arr));
 
-    // ✅ [수정] 마감 정보를 별도로 수집 (모든 클래스에 대해)
-    const unconfirmedInfo = {}; // key: classKey, val: [ {month, day}, ... ]
+    const unconfirmedInfo = {}; 
 
-    // 1. 초기화
     targetClassKeys.forEach(k => unconfirmedInfo[k] = []);
 
-    // 2. 검색 범위 내의 "유효 날짜(Valid Date)" 목록 생성
     const yearKey = CURRENT_YEAR;
     const validDaysMap = globalData[yearKey] ? globalData[yearKey].validDays : {};
 
-    // 체크해야 할 날짜 리스트 만들기
     const checkEndDate = (filterEndDate > today) ? today : filterEndDate;
     const checkStartDate = filterStartDate;
 
-    const requiredDates = []; // { m: "3", d: 5 }
+    const requiredDates = []; 
     
     if (validDaysMap) {
         let loopDate = new Date(checkStartDate);
@@ -1337,7 +1357,6 @@ async function runStatsSearch() {
         }
     }
 
-    // 3. 각 반별로 확인
     const classDataMap = {};
     results.forEach(res => {
         if (!classDataMap[res.classKey]) classDataMap[res.classKey] = {};
@@ -1441,7 +1460,6 @@ async function runStatsSearch() {
       });
     });
 
-    // unconfirmedInfo를 인자로 전달
     renderStatsResult(aggregated, targetClassKeys, mode, displayTitle, unconfirmedInfo, fullDayAbsentCounts, hasRangeData);
 
   } catch (e) {
@@ -1457,7 +1475,6 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
   html += `<div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#555;">[ ${displayTitle} ]</div>`;
 
   if (mode === 'daily') {
-      // ✅ [추가 로직] 모든 반이 마감되었는지 확인
       let isAllConfirmedForSummary = true;
       for (const cKey of sortedClassKeys) {
           const unconf = unconfirmedInfo[cKey] || [];
@@ -1467,15 +1484,12 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
           }
       }
 
-      // 모든 반이 마감되었을 때만 요약 통계 표시
       if (isAllConfirmedForSummary) {
           const summary = calculateDailySummary(fullDayAbsentCounts);
           if(summary) html += summary;
       }
   }
 
-  // ✅ [수정 완료: 기능 5-2 All Clean Check]
-  // 모든 반이 1) 마감 완료이고 2) 특이사항이 없는지 체크
   let isAllClean = true;
   for (const cKey of sortedClassKeys) {
       const notConfirmedList = unconfirmedInfo[cKey] || [];
@@ -1487,18 +1501,13 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
       }
   }
 
-  // 데이터가 아예 없는 경우(미래 등)는 위에서 걸러졌거나 hasRangeData로 처리됨.
-  // 만약 조회 기간 내에 유효 데이터가 있지만, 모두 출석하고 모두 마감했다면:
   if (hasRangeData && isAllClean) {
-      // ✅ [수정 완료: 기능 3] 문구 통일
       html += `<div style="padding:40px; text-align:center; color:#888;">특이사항(결석 등)이 없습니다.</div>`;
       container.innerHTML = html;
       return;
   }
   
-  // 반별 렌더링
   sortedClassKeys.forEach(classKey => {
-    // 1. 마감 배지 생성
     const notConfirmedList = unconfirmedInfo[classKey] || [];
     let badgeHtml = "";
     let unconfirmedText = "";
@@ -1508,10 +1517,7 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
     } else {
         badgeHtml = `<span style="font-size:12px; color:red; margin-left:8px;">[마감 전]</span>`;
 
-        // ✅ [수정 완료] 일별 조회 시 텍스트 제거, 월별/기간만 텍스트 표시
         if (mode !== 'daily') {
-            // 월별 그룹핑 및 연속 날짜 스마트 요약
-            // 1. 월별로 나누기
             const groupByMonth = {};
             notConfirmedList.forEach(item => {
                 if (!groupByMonth[item.month]) groupByMonth[item.month] = [];
@@ -1526,9 +1532,6 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
                 const days = groupByMonth[m].sort((a,b)=>a-b);
                 const validList = validDaysMap[m] || [];
                 
-                // 연속성 체크 로직 (Smart Grouping)
-                // validList에서 days[i]와 days[i+1] 사이에 다른 valid day가 없으면 연속으로 판단
-                
                 let ranges = [];
                 if (days.length > 0) {
                     let start = days[0];
@@ -1537,15 +1540,12 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
                     for (let i = 1; i < days.length; i++) {
                         const current = days[i];
                         
-                        // prev(end)와 current 사이에 valid day가 있는지 확인
                         const validIdxStart = validList.indexOf(end);
                         const validIdxEnd = validList.indexOf(current);
                         
-                        // 인덱스가 연속되면 (즉, validList 상에서 바로 옆이면) -> 연속된 수업일
                         if (validIdxStart !== -1 && validIdxEnd !== -1 && (validIdxEnd - validIdxStart === 1)) {
                             end = current;
                         } else {
-                            // 끊김 -> 저장 후 새로 시작
                             ranges.push(start === end ? `${start}` : `${start}~${end}`);
                             start = current;
                             end = current;
@@ -1557,7 +1557,6 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
                 parts.push(`${m}월 ${ranges.join(', ')}일`);
             });
             
-            // "마감 전" 텍스트 중복 제거
             unconfirmedText = `<span style="font-size:12px; color:red; margin-left:5px;">${parts.join(', ')}</span>`;
         }
     }
@@ -1565,7 +1564,6 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
     const studentsMap = aggregatedData[classKey];
     const hasStudents = studentsMap && Object.keys(studentsMap).length > 0;
 
-    // ✅ [수정 완료: 기능 5-1] 무조건 반 리스트 표시
     html += `<div class="stats-class-block">
                 <div class="stats-class-header">
                     ${classKey}반 ${badgeHtml} ${unconfirmedText}
@@ -1584,15 +1582,12 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
           }
         });
     } else {
-        // ✅ [수정 완료: 기능 3] 특이사항 없음 문구 통일
         html += `<div style="padding:15px; text-align:center; color:#888; font-size:13px;">특이사항(결석 등)이 없습니다.</div>`;
     }
     html += `</div>`;
   });
 
   if (!hasRangeData) {
-    // ✅ [수정 완료: 기능 4] 조회 불가 메시지 (이미 runStatsSearch 초반에 처리했지만 이중 안전장치)
-    // 여기 도달했다는 건 날짜 범위가 과거지만 데이터가 없는 경우(휴일 등)
     html += `<div style="padding:20px; text-align:center; color:#888;">해당 기간의 수업 자료가 없습니다.</div>`;
   } 
   
@@ -1691,12 +1686,9 @@ function convertSymbolToText(symbol) {
   return symbol; 
 }
 
-// ✅ [신규 함수] 학년도(SchoolYear)와 월(Month)을 입력받아
-// 실제 달력상의 연도(CalendarYear)를 반환하는 함수
 function getRealYear(schoolYear, month) {
   const m = parseInt(month);
   const y = parseInt(schoolYear);
-  // 1월, 2월 데이터는 실제로는 (학년도 + 1)년의 데이터임
   if (m === 1 || m === 2) {
     return y + 1;
   }
