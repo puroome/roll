@@ -1,5 +1,18 @@
 @charset "UTF-8";
 
+:root {
+  --primary-color: #007bff;
+  --primary-dark: #0056b3;
+  --secondary-bg: #f1f3f4;
+  --text-main: #333;
+  --text-sub: #666;
+  --border-color: #ddd;
+  --white: #ffffff;
+  --danger: #dc3545;
+  --success: #28a745;
+  --highlight: #3b82f6;
+}
+
 body { 
   font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', sans-serif !important;
   padding: 0; 
@@ -24,9 +37,9 @@ body {
 }
 
 /* 홈 화면 스타일 */
-.home-header { padding: 40px 20px 20px; background: white; text-align: center; }
-.home-header h1 { margin: 0; font-size: 24px; color: #333; }
-.home-header p { margin: 10px 0 0; color: #666; font-size: 14px; }
+.home-header { padding: 40px 20px 20px; background: var(--white); text-align: center; }
+.home-header h1 { margin: 0; font-size: 24px; color: var(--text-main); }
+.home-header p { margin: 10px 0 0; color: var(--text-sub); font-size: 14px; }
 
 .home-content { 
   flex: 1; 
@@ -41,12 +54,12 @@ body {
   box-sizing: border-box;
 }
 
-.mode-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center; }
-.mode-card h2 { margin: 0 0 10px; font-size: 18px; color: #333; }
+.mode-card { background: var(--white); border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center; }
+.mode-card h2 { margin: 0 0 10px; font-size: 18px; color: var(--text-main); }
 .mode-card p { margin: 0 0 20px; font-size: 13px; color: #888; line-height: 1.4; }
 
 .mode-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
-.mode-btn.stats { background-color: #6f42c1; color: white; }
+.mode-btn.stats { background-color: #6f42c1; color: var(--white); }
 .mode-btn:active { opacity: 0.8; }
 
 /* 반 버튼 그리드 */
@@ -54,26 +67,25 @@ body {
 .grade-row:last-child { margin-bottom: 0; }
 
 .class-btn { 
-  background-color: #007bff; color: white; border: none; border-radius: 8px; 
+  background-color: var(--primary-color); color: var(--white); border: none; border-radius: 8px; 
   width: 68px; height: 40px; 
   font-size: 14px; font-weight: bold; cursor: pointer; 
   display: flex; align-items: center; justify-content: center;
 }
-.class-btn:active { background-color: #0056b3; }
+.class-btn:active { background-color: var(--primary-dark); }
 .class-btn.grade-1 { background-color: #ffc107; color: #000; }
 .class-btn.grade-1:active { background-color: #e0a800; }
-.class-btn.grade-3 { background-color: #dc3545; color: #fff; }
+.class-btn.grade-3 { background-color: var(--danger); color: #fff; }
 .class-btn.grade-3:active { background-color: #c82333; }
 .class-btn.gray-status { background-color: #d1d5db !important; color: #555 !important; border: 1px solid #ced4da; }
 .class-btn.disabled { background-color: #e9ecef; color: #adb5bd; cursor: default; pointer-events: none; }
 
 /* 컨트롤 박스 */
 .controls { 
-  flex-shrink: 0; display: flex; flex-direction: column; background: white; 
-  padding: 8px 5px; border-bottom: 1px solid #ddd; box-shadow: none; margin-bottom: 0; z-index: 200; 
+  flex-shrink: 0; display: flex; flex-direction: column; background: var(--white); 
+  padding: 8px 5px; border-bottom: 1px solid var(--border-color); box-shadow: none; margin-bottom: 0; z-index: 200; 
 }
 
-/* ✅ [수정] 출석 확인 화면 너비 제한 (통계 화면과 동일하게) */
 #attendanceScreen .controls {
   width: 100%;
   max-width: 420px;
@@ -81,92 +93,84 @@ body {
   box-sizing: border-box;
 }
 
-/* ✅ [수정] 컨트롤 바 레이아웃 개선 */
 .control-row { 
   display: flex; 
   align-items: center; 
-  justify-content: space-between; /* 양쪽 끝 배분 후 중앙 요소 배치 */
+  justify-content: space-between; 
   flex-wrap: nowrap; 
   width: 100%; 
-  height: 40px; /* 높이 고정 */
+  height: 40px; 
 }
 
-/* ✅ [수정] 중앙 홈 버튼 스타일 (파란색 박스 + 하얀 집) */
 .home-center-btn {
-  background: #3b82f6; /* 요청하신 파란색 */
+  background: var(--highlight); 
   border: none;
-  border-radius: 12px; /* 둥근 모서리 */
+  border-radius: 12px; 
   width: 36px; height: 36px;
-  font-size: 0; /* 텍스트 숨김, SVG만 표시 */
+  font-size: 0; 
   cursor: pointer; 
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 2px 5px rgba(59, 130, 246, 0.3);
-  margin: 0 8px; /* 양옆 간격 확보 */
+  margin: 0 8px; 
   flex-shrink: 0;
 }
 .home-center-btn:active { transform: scale(0.95); opacity: 0.9; }
 
-.back-btn { background: #f1f3f4; border: none; padding: 6px 12px; border-radius: 16px; font-size: 13px; font-weight: bold; color: #555; cursor: pointer; }
+.back-btn { background: var(--secondary-bg); border: none; padding: 6px 12px; border-radius: 16px; font-size: 13px; font-weight: bold; color: #555; cursor: pointer; }
 .group-left, .group-right { display: flex; align-items: center; gap: 6px; }
 
 .date-trigger-btn {
-  background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 6px 10px;
-  font-size: 15px; font-weight: bold; color: #333; cursor: pointer;
+  background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 10px;
+  font-size: 15px; font-weight: bold; color: var(--text-main); cursor: pointer;
   display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  height: 36px; /* 높이 통일 */
+  height: 36px; 
   box-sizing: border-box;
 }
-.date-trigger-btn:active { background-color: #f1f3f4; }
+.date-trigger-btn:active { background-color: var(--secondary-bg); }
 
-input[type="text"] { height: 32px; padding: 0 5px; border-radius: 4px; border: 1px solid #ddd; font-size: 13px; box-sizing: border-box; }
+input[type="text"] { height: 32px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--border-color); font-size: 13px; box-sizing: border-box; }
 
-/* ✅ [신규] 세그먼트 컨트롤 스타일 (라디오 버튼 대체) */
+/* 세그먼트 컨트롤 */
 .segment-control {
   display: flex;
-  background-color: #f1f3f4;
+  background-color: var(--secondary-bg);
   padding: 3px;
   border-radius: 8px;
   gap: 2px;
-  height: 36px; /* 높이 통일 */
+  height: 36px; 
   box-sizing: border-box;
   align-items: center;
 }
 
-/* 실제 라디오 인풋은 숨김 */
-.segment-input {
-  display: none; 
-}
+.segment-input { display: none; }
 
-/* 라벨을 버튼처럼 스타일링 */
 .segment-label {
   padding: 0 10px;
   height: 28px;
   line-height: 28px;
   font-size: 13px;
   font-weight: bold;
-  color: #666;
+  color: var(--text-sub);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
-/* 선택되었을 때 스타일 */
 .segment-input:checked + .segment-label {
-  background-color: white;
-  color: #3b82f6; /* 포인트 컬러 */
+  background-color: var(--white);
+  color: var(--highlight); 
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* ✅ [수정] 사유 입력창 디자인 개선 */
 #reasonInput { 
   width: 50px; 
-  height: 36px; /* 높이 통일 */
+  height: 36px; 
   font-size: 13px; 
   text-align: center; 
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  background-color: white;
+  background-color: var(--white);
   transition: all 0.2s;
 }
 #reasonInput:disabled { 
@@ -176,23 +180,22 @@ input[type="text"] { height: 32px; padding: 0 5px; border-radius: 4px; border: 1
 }
 #reasonInput:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--highlight);
 }
 
-#loading { color: #007bff; font-weight: bold; font-size: 12px; margin-left: 5px;}
+#loading { color: var(--primary-color); font-weight: bold; font-size: 12px; margin-left: 5px;}
 
 /* 테이블 레이아웃 */
 .table-wrapper { 
-  flex-grow: 1; overflow: auto; background: white; position: relative; 
+  flex-grow: 1; overflow: auto; background: var(--white); position: relative; 
   touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch;
 }
 
-/* ✅ [수정] 테이블 래퍼 너비 제한 */
 #attendanceScreen .table-wrapper {
   width: 100%;
   max-width: 420px;
   margin: 0 auto;
-  border-right: 1px solid #eee; /* 중앙 정렬 시 경계선 */
+  border-right: 1px solid #eee; 
   border-left: 1px solid #eee;
 }
 
@@ -207,16 +210,16 @@ thead tr:nth-child(2) th { top: 32px; z-index: 50; }
 
 .col-no, tbody td:first-child {
   position: sticky; left: 0; width: 30px !important; min-width: 30px !important; max-width: 30px !important;
-  background-color: #fff; border-right: 1px solid #ddd; font-size: 11px; z-index: 60; color: #888;
+  background-color: #fff; border-right: 1px solid var(--border-color); font-size: 11px; z-index: 60; color: #888;
 }
 .col-name, tbody td:nth-child(2) {
   position: sticky; left: 30px !important; width: 55px !important; min-width: 55px !important; max-width: 55px !important;
   border-right: 2px solid #bbb; font-weight: bold; z-index: 60; font-size: 14px;
 }
 tbody td:nth-child(2) { background-color: #fff; cursor: pointer; }
-tbody td:nth-child(2):hover { background-color: #f1f3f4 !important; color: #007bff; }
+tbody td:nth-child(2):hover { background-color: var(--secondary-bg) !important; color: var(--primary-color); }
 thead th.col-name {
-  background-color: #e2f1ff !important; color: #0056b3; cursor: pointer; transition: all 0.2s;
+  background-color: #e2f1ff !important; color: var(--primary-dark); cursor: pointer; transition: all 0.2s;
   z-index: 150 !important; top: 0; height: 64px; white-space: normal !important; line-height: 1.2;
 }
 thead th.col-name.save-active { background-color: #198754 !important; color: white; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); }
@@ -229,31 +232,30 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
   color: #777; 
 }
 
-/* ✅ [수정] 비활성(빈 교시) 영역 스타일 */
 .inactive-header {
-  background-color: #f1f3f4 !important;
+  background-color: var(--secondary-bg) !important;
   border-bottom: 1px solid #ccc;
   pointer-events: none;
 }
 .inactive-cell {
-  background-color: #f1f3f4 !important;
+  background-color: var(--secondary-bg) !important;
   border-bottom: 1px solid #eee;
-  pointer-events: none; /* 클릭 방지 */
+  pointer-events: none; 
 }
 
 .check-cell { cursor: pointer; line-height: 1.1; position: relative;}
 .multi-selecting { animation: blink-green-selecting 1s infinite ease-in-out !important; z-index: 10; }
 @keyframes blink-green-selecting {
-  0% { background-color: rgba(100, 255, 100, 0.2); box-shadow: inset 0 0 0 2px #28a745; }
-  50% { background-color: rgba(100, 255, 100, 0.6); box-shadow: inset 0 0 0 2px #28a745; }
-  100% { background-color: rgba(100, 255, 100, 0.2); box-shadow: inset 0 0 0 2px #28a745; }
+  0% { background-color: rgba(100, 255, 100, 0.2); box-shadow: inset 0 0 0 2px var(--success); }
+  50% { background-color: rgba(100, 255, 100, 0.6); box-shadow: inset 0 0 0 2px var(--success); }
+  100% { background-color: rgba(100, 255, 100, 0.2); box-shadow: inset 0 0 0 2px var(--success); }
 }
 .flash-success { animation: flash-success-anim 0.5s ease-out forwards; }
-@keyframes flash-success-anim { 0% { background-color: #28a745; color: white; } 100% { background-color: transparent; color: inherit; } }
-.unsaved-cell { box-shadow: inset 0 0 0 2px #dc3545 !important; }
+@keyframes flash-success-anim { 0% { background-color: var(--success); color: white; } 100% { background-color: transparent; color: inherit; } }
+.unsaved-cell { box-shadow: inset 0 0 0 2px var(--danger) !important; }
 
 .mark-symbol { font-size: 16px; font-weight: bold; pointer-events: none; }
-.mark-note { font-size: 10px; color: #666; display: block; margin-top: 0px; font-weight: normal; pointer-events: none; }
+.mark-note { font-size: 10px; color: var(--text-sub); display: block; margin-top: 0px; font-weight: normal; pointer-events: none; }
 
 #toast-container {
   visibility: hidden; min-width: 200px; background-color: rgba(30, 30, 30, 0.9); color: #fff; text-align: center;
@@ -276,24 +278,22 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
   width: 80%; max-width: 320px; text-align: center;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
-.modal-title { font-size: 18px; font-weight: 800; margin-bottom: 12px; color: #333; }
+.modal-title { font-size: 18px; font-weight: 800; margin-bottom: 12px; color: var(--text-main); }
 .modal-sub-title { font-size: 13px; font-weight: normal; color: #555; margin-left: 4px; }
-.modal-body { font-size: 15px; margin-bottom: 24px; color: #666; line-height: 1.5; }
+.modal-body { font-size: 15px; margin-bottom: 24px; color: var(--text-sub); line-height: 1.5; }
 .modal-footer { display: flex; gap: 10px; justify-content: center; }
 .modal-btn { flex: 1; padding: 10px 0; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; }
-.modal-btn.cancel { background: #f1f3f4; color: #333; }
-.modal-btn.confirm { background: #007bff; color: white; }
+.modal-btn.cancel { background: var(--secondary-bg); color: var(--text-main); }
+.modal-btn.confirm { background: var(--primary-color); color: white; }
 
-/* 우상단 닫기 버튼 */
 .close-x-btn {
   position: absolute; top: 15px; right: 15px;
   width: 24px; height: 24px; line-height: 24px;
   font-size: 24px; color: #aaa; cursor: pointer;
   z-index: 10;
 }
-.close-x-btn:hover { color: #333; }
+.close-x-btn:hover { color: var(--text-main); }
 
-/* 연락처 버튼 그룹 */
 .contact-btn-group {
   display: flex; gap: 6px; justify-content: center; margin: 0 auto 20px auto;
   max-width: 280px; 
@@ -305,78 +305,64 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 }
 .contact-btn:active { opacity: 0.7; }
 
-/* 파스텔톤 버튼 색상 */
 .btn-pastel-blue { background-color: #e3f2fd; color: #1565c0; }   
 .btn-pastel-green { background-color: #e8f5e9; color: #2e7d32; }  
 .btn-pastel-red { background-color: #ffebee; color: #c62828; }    
 
 .overscroll-y-none { overscroll-behavior-y: none; }
 
-/* 통계 스타일 (기존과 동일) */
-.stats-wrapper { flex: 1; overflow-y: auto; background: white; padding: 20px; width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; }
+/* 통계 스타일 */
+.stats-wrapper { flex: 1; overflow-y: auto; background: var(--white); padding: 20px; width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; }
 .stats-class-block { margin-bottom: 25px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
-.stats-class-header { background: #f8f9fa; padding: 10px 15px; font-weight: bold; color: #333; border-bottom: 1px solid #eee; }
+.stats-class-header { background: #f8f9fa; padding: 10px 15px; font-weight: bold; color: var(--text-main); border-bottom: 1px solid #eee; }
 .stats-student-row { padding: 12px 15px; border-bottom: 1px solid #f1f1f1; font-size: 14px; }
 .stats-student-row:last-child { border-bottom: none; }
-.stats-student-name { font-weight: bold; margin-bottom: 4px; color: #0056b3; }
+.stats-student-name { font-weight: bold; margin-bottom: 4px; color: var(--primary-dark); }
 .stats-detail { color: #555; font-size: 13px; line-height: 1.5; padding-left: 10px; border-left: 3px solid #ddd; margin-top: 5px; }
 .stats-summary-box { background-color: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; }
 .stats-summary-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-.summary-total { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; font-weight: bold; color: #007bff; font-size: 16px; }
+.summary-total { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; font-weight: bold; color: var(--primary-color); font-size: 16px; }
 #statsScreen .controls { width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; }
 
-/* ✅ [수정] 날짜 입력창 디자인 개선 (텍스트+아이콘 덩어리 중앙 정렬) */
 .date-input-wrapper {
   position: relative;
-  /* Flexbox로 변경: 내부 내용물을 덩어리로 묶어 정중앙 배치 */
   display: inline-flex; 
   align-items: center;
   justify-content: center;
-  
-  /* 기존 input의 외형 스타일을 Wrapper로 이동 */
   background: white;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   width: 128px; 
-  height: 32px; /* 높이 고정 */
+  height: 32px; 
   padding: 0 4px;
   box-sizing: border-box;
   cursor: pointer;
 }
 
 .date-picker { 
-  /* Input 스타일 초기화 (투명화) */
   border: none !important;
   background: transparent !important;
   margin: 0 !important;
-  padding: 0 6px 0 0 !important; /* 오른쪽 여백을 주어 아이콘과 살짝 분리 */
-  
-  width: 88px !important; /* YYYY-MM-DD가 들어갈 적절한 너비 고정 */
+  padding: 0 6px 0 0 !important; 
+  width: 88px !important; 
   height: 100%;
-  
-  /* ★ 핵심: 텍스트를 우측 정렬하여 아이콘과 딱 붙게 만듦 */
   text-align: right; 
-  
   font-family: inherit; font-size: 14px; 
-  color: #333;
+  color: var(--text-main);
   outline: none;
   cursor: pointer;
 }
 
-/* 기간 설정도 동일하게 적용 */
 #statsPeriodInput .date-picker {
   width: 88px !important; 
 }
 
-/* 달력 아이콘 오버레이 */
 .calendar-icon-overlay {
-  /* 절대 위치 제거 -> Flex 아이템으로 흐름에 참여 */
   position: static !important;
   transform: none !important;
   margin: 0;
-  
   font-size: 14px;
-  color: #666;
+  color: var(--text-sub);
   pointer-events: none; 
   display: flex;
   align-items: center;
@@ -388,13 +374,62 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .period-separator { color: #888; font-weight: bold; }
 .filter-container { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 5px 0; max-height: 100px; overflow-y: auto; }
 .filter-tag { display: inline-flex; align-items: center; cursor: pointer; user-select: none; }
-
 .filter-tag input { display: none; }
-
-.filter-tag span { padding: 6px 12px; border-radius: 20px; background-color: #f1f3f4; color: #555; font-size: 13px; font-weight: bold; border: 1px solid transparent; transition: all 0.2s; }
-.filter-tag input:checked + span { background-color: #e7f1ff; color: #007bff; border-color: #007bff; }
-
+.filter-tag span { padding: 6px 12px; border-radius: 20px; background-color: var(--secondary-bg); color: #555; font-size: 13px; font-weight: bold; border: 1px solid transparent; transition: all 0.2s; }
+.filter-tag input:checked + span { background-color: #e7f1ff; color: var(--primary-color); border-color: var(--primary-color); }
 .filter-tag input#chkAll:checked + span { background-color: #ffebee; color: #c62828; border-color: #c62828; }
 
-.action-btn-full { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
-.action-btn-full:active { background-color: #0056b3; }
+.action-btn-full { width: 100%; padding: 10px; background-color: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+.action-btn-full:active { background-color: var(--primary-dark); }
+
+/* 스켈레톤 로딩 스타일 */
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  gap: 10px;
+}
+.skeleton-box {
+  background-color: #e0e0e0;
+  height: 20px;
+  border-radius: 4px;
+  animation: skeleton-loading 1.5s infinite ease-in-out;
+}
+@keyframes skeleton-loading {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* 플로팅 저장 버튼 */
+.floating-save-btn {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+  cursor: pointer;
+  z-index: 1000;
+  transition: transform 0.2s, opacity 0.2s;
+  font-size: 13px;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+}
+.floating-save-btn.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.floating-save-btn:active {
+  transform: scale(0.95);
+}
