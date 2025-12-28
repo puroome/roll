@@ -135,7 +135,6 @@ thead th.col-name.save-active { background-color: #198754 !important; color: whi
 thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-color: #f8f9fa;}
 .confirmed-header { color: #d63384 !important; }
 
-/* ✅ [수정] 마감 시 투명도 제거 -> 배경색을 진한 회색으로 변경하여 테두리 가시성 확보 */
 .confirmed-col { 
   background-color: #e0e0e0 !important; 
   pointer-events: none; 
@@ -197,7 +196,7 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 /* 연락처 버튼 그룹 */
 .contact-btn-group {
   display: flex; gap: 6px; justify-content: center; margin: 0 auto 20px auto;
-  max-width: 280px; /* [수정] 너비 축소 */
+  max-width: 280px; 
 }
 .contact-btn {
   flex: 1; padding: 10px 0; font-size: 14px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer;
@@ -206,10 +205,10 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 }
 .contact-btn:active { opacity: 0.7; }
 
-/* [신규] 파스텔톤 버튼 색상 */
-.btn-pastel-blue { background-color: #e3f2fd; color: #1565c0; }   /* 연한 파랑 */
-.btn-pastel-green { background-color: #e8f5e9; color: #2e7d32; }  /* 연한 초록 */
-.btn-pastel-red { background-color: #ffebee; color: #c62828; }    /* 연한 빨강 */
+/* 파스텔톤 버튼 색상 */
+.btn-pastel-blue { background-color: #e3f2fd; color: #1565c0; }   
+.btn-pastel-green { background-color: #e8f5e9; color: #2e7d32; }  
+.btn-pastel-red { background-color: #ffebee; color: #c62828; }    
 
 .overscroll-y-none { overscroll-behavior-y: none; }
 
@@ -226,21 +225,21 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .summary-total { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; font-weight: bold; color: #007bff; font-size: 16px; }
 #statsScreen .controls { width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; }
 
-/* ✅ [수정] 날짜 입력창 디자인 개선 */
+/* ✅ [수정] 날짜 입력창 디자인 개선 (너비 축소) */
 .date-input-wrapper {
   position: relative;
   display: inline-block;
 }
 .date-picker { 
-  text-align: center; /* [수정] 가운데 정렬 */
-  padding-right: 30px; /* 아이콘 공간 확보 */
-  width: 140px; 
+  text-align: center; 
+  padding-right: 30px; 
+  width: 115px; /* [수정됨] 140px -> 115px (여백 최소화) */
   cursor: pointer;
-  border: 1px solid #ddd; border-radius: 4px; padding: 4px 30px 4px 8px; /* 오른쪽 패딩 증가 */
+  border: 1px solid #ddd; border-radius: 4px; padding: 4px 30px 4px 8px; 
   font-family: inherit; font-size: 14px; background: white; 
 }
 #statsPeriodInput .date-picker {
-  width: 125px; /* 기간 설정은 두 개라 조금 작게 */
+  width: 115px; /* 기간 설정도 동일하게 적용 */
 }
 /* 달력 아이콘 오버레이 */
 .calendar-icon-overlay {
@@ -248,7 +247,7 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  pointer-events: none; /* 클릭 시 input이 눌리도록 */
+  pointer-events: none; 
   font-size: 14px;
   color: #666;
 }
@@ -260,13 +259,11 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .filter-container { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 5px 0; max-height: 100px; overflow-y: auto; }
 .filter-tag { display: inline-flex; align-items: center; cursor: pointer; user-select: none; }
 
-/* [수정] 체크박스 숨김 */
 .filter-tag input { display: none; }
 
 .filter-tag span { padding: 6px 12px; border-radius: 20px; background-color: #f1f3f4; color: #555; font-size: 13px; font-weight: bold; border: 1px solid transparent; transition: all 0.2s; }
 .filter-tag input:checked + span { background-color: #e7f1ff; color: #007bff; border-color: #007bff; }
 
-/* [신규] '전체' 버튼(#chkAll) 선택 시 (옅은 붉은색 계열) */
 .filter-tag input#chkAll:checked + span { background-color: #ffebee; color: #c62828; border-color: #c62828; }
 
 .action-btn-full { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
