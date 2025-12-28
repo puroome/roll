@@ -1085,8 +1085,8 @@ function showStudentSummary(studentNo, studentName) {
                   <a href="sms:${phone}" class="contact-btn btn-pastel-green">📩 문자</a>
               </div>
               <div class="btn-group-options">
-                  <div class="contact-btn btn-pastel-blue" onclick="execLocationRequest()">❓ 요청</div>
-                  <div class="contact-btn btn-pastel-blue" onclick="execLocationCheck()">❗ 확인</div>
+                  <div class="contact-btn btn-pastel-red" onclick="execLocationRequest()">❓ 요청</div>
+                  <div class="contact-btn btn-pastel-red" onclick="execLocationCheck()">❗ 확인</div>
               </div>
           </div>
           <div class="contact-btn btn-location-toggle btn-pastel-red" onclick="toggleLocationMode()">
@@ -1809,4 +1809,5 @@ function convertSymbolToText(symbol) {
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
 }
+
 
