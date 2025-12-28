@@ -232,15 +232,15 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 }
 .date-picker { 
   text-align: center; 
-  padding-right: 30px; 
-  width: 125px; /* [수정] 115px -> 125px (너비 약간 확보) */
+  width: 128px; /* [수정] 128px로 살짝 넓힘 */
   cursor: pointer;
   border: 1px solid #ddd; border-radius: 4px; 
-  padding: 4px 40px 4px 2px; /* [수정] 왼쪽 2px로 축소, 오른쪽 40px로 확대 */
+  /* [핵심 수정] 왼쪽 10px, 오른쪽 34px (아이콘 공간 + 여백) -> 시각적 중앙 정렬 */
+  padding: 4px 34px 4px 10px; 
   font-family: inherit; font-size: 14px; background: white; 
 }
 #statsPeriodInput .date-picker {
-  width: 122px; /* 기간 설정도 비슷하게 맞춤 */
+  width: 128px; /* 기간 설정도 동일하게 적용 */
 }
 /* 달력 아이콘 오버레이 */
 .calendar-icon-overlay {
