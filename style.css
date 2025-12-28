@@ -222,7 +222,9 @@ thead th.col-name {
   background-color: #e2f1ff !important; color: var(--primary-dark); cursor: pointer; transition: all 0.2s;
   z-index: 150 !important; top: 0; height: 64px; white-space: normal !important; line-height: 1.2;
 }
-thead th.col-name.save-active { background-color: #198754 !important; color: white; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); }
+
+/* [삭제됨] save-active 스타일 제거 */
+
 thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-color: #f8f9fa;}
 .confirmed-header { color: #d63384 !important; }
 
