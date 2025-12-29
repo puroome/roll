@@ -570,56 +570,54 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .text-red-small { font-size: 12px; color: red; margin-left: 5px; }
 
 
-/* [추가됨] 홈 화면 상단 요소 (개발자 크레딧, 시트 링크) */
+/* [수정됨] 홈 화면 상단 요소 (개발자 크레딧, 시트 링크) */
 .home-top-elements {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 60px; /* 공간 확보 */
-    pointer-events: none; /* 클릭 통과 (버튼 제외) */
-    z-index: 100;
-    padding: 15px 20px;
-    box-sizing: border-box;
+    /* absolute 제거하고 flex로 배치하여 문서 흐름에 포함 */
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 15px; /* 아래 카드와의 간격 */
+    box-sizing: border-box;
+    padding: 0 4px; /* 카드와 라인 맞추기 위한 미세 조정 */
 }
 
 .developer-credit {
-    font-size: 13px;
-    color: #b0b0b0; /* 요청하신 옅은 회색 */
+    font-size: 11px; /* 13px -> 11px로 축소 */
+    color: #b0b0b0;
     font-weight: normal;
     font-family: 'Arial', sans-serif;
     pointer-events: none;
-    margin-top: 5px;
 }
 
 .sheet-link-btn {
-    pointer-events: auto; /* 링크 클릭 가능 */
+    pointer-events: auto;
     display: block;
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
+    width: 26px; /* 40px -> 26px로 축소 (약 60%) */
+    height: 26px;
+    border-radius: 6px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     text-decoration: none;
-    background: white; /* 아이콘 배경 */
+    background: white;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-/* img 대신 svg 태그 스타일로 변경 */
+/* img 대신 svg 태그 스타일 */
 .sheet-link-btn svg {
-    width: 100%; /* SVG는 부모 크기에 꽉 차게 설정 */
+    width: 100%;
     height: 100%;
     display: block;
-    border-radius: 8px; /* 버튼 둥글기랑 맞춤 */
+    border-radius: 6px; /* 버튼 둥글기랑 맞춤 */
 }
 
-.sheet-link-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+/* .home-content의 상단 여백 조정 */
+.home-content {
+    /* 상단 요소를 넣었으므로 기존의 큰 패딩(40px)을 줄임 */
+    padding-top: 20px !important; 
+    margin-top: 0 !important;
 }
+
 
