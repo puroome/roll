@@ -598,8 +598,15 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
     background: transparent;
     text-decoration: none;
     border-radius: 6px;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease; /* box-shadow 애니메이션도 원하면 추가 */
 }
+
+/* ▼▼▼ 여기 추가된 부분 ▼▼▼ */
+.sheet-link-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+/* ▲▲▲ ----------------- ▲▲▲ */
 
 .sheet-link-btn:active {
     transform: scale(0.95);
@@ -617,5 +624,6 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
     padding-top: 40px !important; /* 원래대로 복구 */
     margin-top: 0 !important;
 }
+
 
 
