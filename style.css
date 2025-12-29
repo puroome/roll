@@ -604,7 +604,6 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 /* ▼▼▼ 여기 추가된 부분 ▼▼▼ */
 .sheet-link-btn:hover {
     transform: translateY(-3px);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
 /* ▲▲▲ ----------------- ▲▲▲ */
 
@@ -624,6 +623,7 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
     padding-top: 40px !important; /* 원래대로 복구 */
     margin-top: 0 !important;
 }
+
 
 
 
