@@ -574,32 +574,34 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .home-top-elements {
     display: flex;
     justify-content: space-between; /* 좌우 끝으로 배치 */
-    align-items: center;
+    align-items: center; /* 수직 중앙 정렬 */
     width: 100%;
-    margin-bottom: 20px; /* 아래 카드와의 간격 */
-    padding: 0 5px; /* 양옆 미세 여백 */
+    margin-bottom: 15px; /* 아래 카드와의 간격 */
+    padding: 0 2px; /* 카드와 시각적 라인을 맞추기 위한 미세 여백 */
     box-sizing: border-box;
 }
 
+/* 개발자 텍스트 스타일 */
 .developer-credit {
-    font-size: 11px; /* 폰트 크기 축소 */
+    font-size: 11px; /* 요청하신 대로 작게 */
     color: #b0b0b0; /* 옅은 회색 */
     font-weight: normal;
     font-family: 'Arial', sans-serif;
     pointer-events: none;
 }
 
+/* 구글 시트 링크 버튼 스타일 */
 .sheet-link-btn {
     pointer-events: auto;
     display: block;
-    width: 26px; /* 아이콘 크기 축소 (약 60%) */
+    width: 26px; /* 요청하신 대로 60% 수준 축소 */
     height: 26px;
-    border-radius: 6px;
     background: transparent;
     text-decoration: none;
+    border-radius: 6px;
     transition: transform 0.2s ease;
-    /* 그림자 제거하여 깔끔하게 (원하시면 box-shadow 추가 가능) */
 }
+
 .sheet-link-btn:active {
     transform: scale(0.95);
 }
@@ -609,12 +611,12 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
     height: 100%;
     display: block;
     border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 아이콘 자체에 살짝 그림자 */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 아이콘에 살짝 그림자 */
 }
 
-/* 홈 컨텐츠 상단 여백 재조정 */
+/* [중요] 홈 컨텐츠 영역 여백 재설정 */
 .home-content {
-    /* 헤더가 안으로 들어왔으므로 기본 패딩 유지하되 상단만 살짝 조정 */
-    padding-top: 30px !important; 
+    /* 기존 40px 패딩을 줄여서 상단 요소가 너무 내려오지 않게 조정 */
+    padding-top: 25px !important; 
     margin-top: 0 !important;
 }
