@@ -586,6 +586,7 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
     font-weight: normal;
     font-family: 'Arial', sans-serif;
     pointer-events: none;
+    margin-top: -8px;
 }
 
 /* 구글 시트 링크 버튼 스타일 */
@@ -616,4 +617,5 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
     padding-top: 40px !important; /* 원래대로 복구 */
     margin-top: 0 !important;
 }
+
 
