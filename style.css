@@ -570,21 +570,19 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .text-red-small { font-size: 12px; color: red; margin-left: 5px; }
 
 
-/* [수정됨] 홈 화면 상단 헤더 스타일 */
+/* [수정됨] 홈 화면 상단 헤더 스타일 (카드 내부용) */
 .home-top-elements {
     display: flex;
     justify-content: space-between; /* 좌우 끝으로 배치 */
     align-items: center; /* 수직 중앙 정렬 */
     width: 100%;
-    margin-bottom: 15px; /* 아래 카드와의 간격 */
-    padding: 0 2px; /* 카드와 시각적 라인을 맞추기 위한 미세 여백 */
-    box-sizing: border-box;
+    margin-bottom: 5px; /* 제목과의 간격을 좁힘 */
 }
 
 /* 개발자 텍스트 스타일 */
 .developer-credit {
-    font-size: 11px; /* 요청하신 대로 작게 */
-    color: #b0b0b0; /* 옅은 회색 */
+    font-size: 11px;
+    color: #b0b0b0; 
     font-weight: normal;
     font-family: 'Arial', sans-serif;
     pointer-events: none;
@@ -594,7 +592,7 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .sheet-link-btn {
     pointer-events: auto;
     display: block;
-    width: 26px; /* 요청하신 대로 60% 수준 축소 */
+    width: 26px; 
     height: 26px;
     background: transparent;
     text-decoration: none;
@@ -611,12 +609,10 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
     height: 100%;
     display: block;
     border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 아이콘에 살짝 그림자 */
 }
 
-/* [중요] 홈 컨텐츠 영역 여백 재설정 */
+/* 홈 컨텐츠 영역 여백 복구 (헤더가 카드 안으로 들어갔으므로) */
 .home-content {
-    /* 기존 40px 패딩을 줄여서 상단 요소가 너무 내려오지 않게 조정 */
-    padding-top: 25px !important; 
+    padding-top: 40px !important; /* 원래대로 복구 */
     margin-top: 0 !important;
 }
