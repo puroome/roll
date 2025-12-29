@@ -610,14 +610,16 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
     justify-content: center;
 }
 
-.sheet-link-btn img {
-    width: 80%; /* 아이콘 내부 여백 느낌 */
-    height: 80%;
-    object-fit: contain;
+/* img 대신 svg 태그 스타일로 변경 */
+.sheet-link-btn svg {
+    width: 100%; /* SVG는 부모 크기에 꽉 차게 설정 */
+    height: 100%;
     display: block;
+    border-radius: 8px; /* 버튼 둥글기랑 맞춤 */
 }
 
 .sheet-link-btn:hover {
     transform: scale(1.1);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
+
