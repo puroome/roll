@@ -31,6 +31,7 @@ body {
   flex-direction: column;
   height: 100%;
   width: 100%;
+  position: relative; /* [수정됨] 절대 위치 자식 요소 배치를 위해 추가 */
 }
 .view-section.active {
   display: flex;
@@ -52,6 +53,7 @@ body {
   max-width: 420px; 
   margin: 0 auto;   
   box-sizing: border-box;
+  margin-top: 40px; /* [수정됨] 상단 아이콘 공간 확보를 위해 여백 추가 */
 }
 
 .mode-card { background: var(--white); border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center; }
@@ -567,3 +569,55 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .badge-unconfirmed { font-size: 12px; color: red; margin-left: 8px; }
 .text-red-small { font-size: 12px; color: red; margin-left: 5px; }
 
+
+/* [추가됨] 홈 화면 상단 요소 (개발자 크레딧, 시트 링크) */
+.home-top-elements {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px; /* 공간 확보 */
+    pointer-events: none; /* 클릭 통과 (버튼 제외) */
+    z-index: 100;
+    padding: 15px 20px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.developer-credit {
+    font-size: 13px;
+    color: #b0b0b0; /* 요청하신 옅은 회색 */
+    font-weight: normal;
+    font-family: 'Arial', sans-serif;
+    pointer-events: none;
+    margin-top: 5px;
+}
+
+.sheet-link-btn {
+    pointer-events: auto; /* 링크 클릭 가능 */
+    display: block;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    text-decoration: none;
+    background: white; /* 아이콘 배경 */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sheet-link-btn img {
+    width: 80%; /* 아이콘 내부 여백 느낌 */
+    height: 80%;
+    object-fit: contain;
+    display: block;
+}
+
+.sheet-link-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
