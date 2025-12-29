@@ -570,21 +570,20 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .text-red-small { font-size: 12px; color: red; margin-left: 5px; }
 
 
-/* [수정됨] 홈 화면 상단 요소 (개발자 크레딧, 시트 링크) */
+/* [수정됨] 홈 화면 상단 헤더 스타일 */
 .home-top-elements {
-    /* absolute 제거하고 flex로 배치하여 문서 흐름에 포함 */
     display: flex;
-    justify-content: space-between;
+    justify-content: space-between; /* 좌우 끝으로 배치 */
     align-items: center;
     width: 100%;
-    margin-bottom: 15px; /* 아래 카드와의 간격 */
+    margin-bottom: 20px; /* 아래 카드와의 간격 */
+    padding: 0 5px; /* 양옆 미세 여백 */
     box-sizing: border-box;
-    padding: 0 4px; /* 카드와 라인 맞추기 위한 미세 조정 */
 }
 
 .developer-credit {
-    font-size: 11px; /* 13px -> 11px로 축소 */
-    color: #b0b0b0;
+    font-size: 11px; /* 폰트 크기 축소 */
+    color: #b0b0b0; /* 옅은 회색 */
     font-weight: normal;
     font-family: 'Arial', sans-serif;
     pointer-events: none;
@@ -593,31 +592,29 @@ thead th.col-no { z-index: 150 !important; top: 0; height: 64px; background-colo
 .sheet-link-btn {
     pointer-events: auto;
     display: block;
-    width: 26px; /* 40px -> 26px로 축소 (약 60%) */
+    width: 26px; /* 아이콘 크기 축소 (약 60%) */
     height: 26px;
     border-radius: 6px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background: transparent;
     text-decoration: none;
-    background: white;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    transition: transform 0.2s ease;
+    /* 그림자 제거하여 깔끔하게 (원하시면 box-shadow 추가 가능) */
+}
+.sheet-link-btn:active {
+    transform: scale(0.95);
 }
 
-/* img 대신 svg 태그 스타일 */
 .sheet-link-btn svg {
     width: 100%;
     height: 100%;
     display: block;
-    border-radius: 6px; /* 버튼 둥글기랑 맞춤 */
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 아이콘 자체에 살짝 그림자 */
 }
 
-/* .home-content의 상단 여백 조정 */
+/* 홈 컨텐츠 상단 여백 재조정 */
 .home-content {
-    /* 상단 요소를 넣었으므로 기존의 큰 패딩(40px)을 줄임 */
-    padding-top: 20px !important; 
+    /* 헤더가 안으로 들어왔으므로 기본 패딩 유지하되 상단만 살짝 조정 */
+    padding-top: 30px !important; 
     margin-top: 0 !important;
 }
-
-
