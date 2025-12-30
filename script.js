@@ -1623,7 +1623,7 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
 
   if (hasRangeData && isAllClean) {
       // [수정] 인라인 스타일 -> CSS 클래스
-      html += `<div class="message-box-lg text-gray">특이사항(결석 등)이 없습니다.</div>`;
+      html += `<div class="message-box-lg text-gray">특이사항이 없습니다.</div>`;
       container.innerHTML = html;
       return;
   }
@@ -1705,7 +1705,7 @@ function renderStatsResult(aggregatedData, sortedClassKeys, mode, displayTitle, 
           }
         });
     } else {
-        html += `<div style="padding:15px; text-align:center; color:#888; font-size:13px;">특이사항(결석 등)이 없습니다.</div>`;
+        html += `<div style="padding:15px; text-align:center; color:#888; font-size:13px;">특이사항이 없습니다.</div>`;
     }
     html += `</div>`;
   });
@@ -1809,6 +1809,7 @@ function convertSymbolToText(symbol) {
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
 }
+
 
 
 
