@@ -1071,7 +1071,7 @@ function showStudentSummary(studentNo, studentName) {
     const suffix = hasBatchim ? "아" : "야";
 
     const locationUrl = "https://puroome.github.io/pin/";
-    const smsBody = `${shortName}${suffix}, 선생님이야. 아래 주소에 들어가서 이름적고, 출석하기 버튼 누르면 돼.\n${locationUrl}`;
+    const smsBody = `${shortName}${suffix}, 선생님이야. 아래에 접속후 이름적고 출석하기 클릭하면 돼.\n${locationUrl}`;
     const encodedBody = encodeURIComponent(smsBody);
     
     // [수정됨] 전역 변수에 URI 저장
@@ -1809,6 +1809,7 @@ function convertSymbolToText(symbol) {
   if (symbol === 'Ⅹ' || symbol === 'X' || symbol === 'x') return '무단';
   return symbol; 
 }
+
 
 
 
