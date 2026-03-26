@@ -656,8 +656,12 @@ function renderTable(data) {
   
   htmlParts.push('</tr></thead><tbody>');
 
-  data.students.forEach(std => {
-    htmlParts.push('<tr>');
+  let renderedCount = 0;
+data.students.forEach(std => {
+    const todayRecords = std.attendance.filter(a => a.day === targetDay);
+    if (todayRecords.length > 0 && todayRecords.every(a => a.value === 'n/a')) return;
+    renderedCount++;
+    htmlParts.push(`<tr>`);
     htmlParts.push(`<td>${std.no}</td>`);
     htmlParts.push(`<td class="col-name" onclick="showStudentSummary('${std.no}', '${std.name}')">${std.name}</td>`);
     
@@ -682,11 +686,13 @@ function renderTable(data) {
   });
   htmlParts.push('</tbody></table>');
   
-  container.innerHTML = htmlParts.join('');
+  const grade = state.currentSelectedClass.split('-')[0];
+state.currentStatsTotalCounts[grade] = renderedCount;
+container.innerHTML = htmlParts.join('');
+updateSaveButtonUI();
+addDragListeners();
+addFocusListeners();
 
-  updateSaveButtonUI();
-  addDragListeners(); 
-  addFocusListeners();
 }
 
 async function toggleDateConfirmation(dayStr) {
