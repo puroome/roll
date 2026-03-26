@@ -1548,9 +1548,11 @@ async function runStatsSearch() {
         }
 
         let validRecords = s.attendance.filter(a => {
-            if (!a.value || a.value.trim() === "") return false;
-            return checkRange(a);
-        });
+    if (!a.value || a.value.trim() === '') return false;
+    if (a.value === 'n/a') return false;
+    return checkRange(a);
+});
+
 
         if (validRecords.length > 0) {
           if (mode === 'daily') {
