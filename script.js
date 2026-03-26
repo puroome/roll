@@ -1512,10 +1512,14 @@ async function runStatsSearch() {
          if (!res.val) return;
 
          if (!finalClassSet.has(res.classKey) && res.val.students) {
-            const grade = res.classKey.split('-')[0];
-            state.currentStatsTotalCounts[grade] += res.val.students.length;
-            finalClassSet.add(res.classKey);
-         }
+    const grade = res.classKey.split('-')[0];
+    const activeStudents = res.val.students.filter(s =>
+        !s.attendance.every(a => a.value === 'n/a')
+    );
+    state.currentStatsTotalCounts[grade] += activeStudents.length;
+    finalClassSet.add(res.classKey);
+}
+
     });
 
     results.forEach(res => {
@@ -1557,7 +1561,8 @@ async function runStatsSearch() {
         if (validRecords.length > 0) {
           if (mode === 'daily') {
              const targetDay = filterStartDate.getDate();
-             const totalPeriodsThatDay = s.attendance.filter(a => a.day == targetDay).length;
+             const totalPeriodsThatDay = s.attendance.filter(a => a.day == targetDay && a.value !== 'n/a').length;
+
              
              if (totalPeriodsThatDay > 0 && validRecords.length === totalPeriodsThatDay) {
                  if (!aggregated[classKey][s.no]) { 
